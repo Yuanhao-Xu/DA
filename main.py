@@ -9,21 +9,26 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader, TensorDataset
 
+# 1.随机采样baseline 精确度出图
+# 2.部署learn loss策略
 
 # 设置随机种子
-def set_seed(seed=42):
+
+
+def set_seed(seed=1):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-set_seed(42)
+
+set_seed(50)
 
 # 加载数据
 file_path = 'Dataset/UCI_Concrete_Data.xls'
 data = pd.read_excel(file_path)
 
 # 数据标准化
-X = data.iloc[:, :-1].values  # 特征
+X = data.iloc[:, :-1].values  # 转化np数组
 y = data.iloc[:, -1].values.reshape(-1, 1)  # 目标变量
 # 实例
 scaler_X = StandardScaler()
@@ -68,6 +73,7 @@ def train_model(model, train_loader, criterion, optimizer, epochs=100):
     for epoch in range(epochs):
         epoch_loss = 0.0
         for inputs, targets in train_loader:
+            inputs, targets = inputs.to(device), targets.to(device)  # 确保在正确设备上
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, targets)
@@ -86,6 +92,7 @@ def evaluate_model(model, test_loader, criterion):
     test_loss = 0.0
     with torch.no_grad():
         for inputs, targets in test_loader:
+            inputs, targets = inputs.to(device), targets.to(device)  # 确保在正确设备上
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             test_loss += loss.item() * inputs.size(0)
@@ -95,6 +102,26 @@ def evaluate_model(model, test_loader, criterion):
     return test_loss
 
 
+# 计算精确度
+def compute_accuracy(model, test_loader, scaler_y):
+    model.eval()
+    all_predictions = []
+    all_targets = []
+    with torch.no_grad():
+        for inputs, targets in test_loader:
+            inputs, targets = inputs.to(device), targets.to(device)  # 确保在正确设备上
+            outputs = model(inputs)
+            all_predictions.extend(outputs.cpu().numpy())
+            all_targets.extend(targets.cpu().numpy())
+
+    # 反标准化
+    all_predictions = scaler_y.inverse_transform(all_predictions)
+    all_targets = scaler_y.inverse_transform(all_targets)
+
+    accuracy = np.mean(1 - np.abs((all_predictions - all_targets) / all_targets)) * 100  # 计算百分比精确度
+    return accuracy
+
+
 # 主动学习训练过程
 def active_learning_training(initial_data, full_data, model, criterion, optimizer, epochs=100, num_cycles=10,
                              acquisition_size=50):
@@ -102,6 +129,7 @@ def active_learning_training(initial_data, full_data, model, criterion, optimize
     X_initial, y_initial = initial_data
 
     test_losses = []
+    accuracies = []
 
     for cycle in range(num_cycles):
         print(f"Active Learning Cycle {cycle + 1}/{num_cycles}")
@@ -117,6 +145,11 @@ def active_learning_training(initial_data, full_data, model, criterion, optimize
         test_loss = evaluate_model(model, test_loader, criterion)
         test_losses.append(test_loss)
 
+        # 计算精确度
+        accuracy = compute_accuracy(model, test_loader, scaler_y)
+        accuracies.append(accuracy)
+        print(f'Cycle {cycle + 1}/{num_cycles}, Accuracy: {accuracy:.2f}%')
+
         # 随机采样新的数据点
         if len(X_pool) >= acquisition_size:
             indices = np.random.choice(len(X_pool), acquisition_size, replace=False)
@@ -127,28 +160,40 @@ def active_learning_training(initial_data, full_data, model, criterion, optimize
             y_pool = np.delete(y_pool, indices, axis=0)
 
             # 添加到初始训练集中
-            X_initial = torch.cat((X_initial, torch.tensor(X_new, dtype=torch.float32)), dim=0)
-            y_initial = torch.cat((y_initial, torch.tensor(y_new, dtype=torch.float32)), dim=0)
+            X_initial = torch.cat((X_initial, torch.tensor(X_new, dtype=torch.float32).clone().detach()), dim=0)
+            y_initial = torch.cat((y_initial, torch.tensor(y_new, dtype=torch.float32).clone().detach()), dim=0)
         else:
             print("Pool exhausted")
             break
 
-    # 可视化测试损失
-    plt.figure(figsize=(10, 5))
+    # 可视化测试损失和精确度
+    plt.figure(figsize=(12, 5))
+
+    plt.subplot(1, 2, 1)
     plt.plot(range(1, len(test_losses) + 1), test_losses, label='Test Loss')
     plt.xlabel('Active Learning Cycle')
     plt.ylabel('Test Loss')
     plt.legend()
     plt.title('Active Learning Test Loss Over Cycles')
     plt.grid(True)
+
+    plt.subplot(1, 2, 2)
+    plt.plot(range(1, len(accuracies) + 1), accuracies, label='Accuracy (%)')
+    plt.xlabel('Active Learning Cycle')
+    plt.ylabel('Accuracy (%)')
+    plt.legend()
+    plt.title('Active Learning Accuracy Over Cycles')
+    plt.grid(True)
+
+    plt.tight_layout()
     plt.show()
 
 
-# 设置设备
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# 设置设备为 CPU
+device = torch.device('cpu')
 
 # 初始化模型
-model = ConcreteNet().to(device)
+model = ConcreteNet().to(device)  # 确保模型在 CPU 上
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
@@ -165,6 +210,6 @@ active_learning_training(
     criterion=criterion,
     optimizer=optimizer,
     epochs=20,
-    num_cycles=100,
+    num_cycles=10,  # 为了测试方便，可以减少循环次数
     acquisition_size=50
 )
