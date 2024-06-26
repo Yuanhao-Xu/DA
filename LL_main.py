@@ -3,11 +3,43 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import visdom
+from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, TensorDataset
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
+
+
+# ============================== 日志 ==============================
+# 先不加入主动学习采样策略，测试训练过程
+
+# ============================== 参数设置 ==============================
+
+NUM_TRAIN = 50000 # N
+NUM_VAL   = 50000 - NUM_TRAIN
+BATCH     = 128 # B
+SUBSET    = 10000 # M
+ADDENDUM  = 1000 # K
+
+MARGIN = 1.0 # xi
+WEIGHT = 1.0 # lambda
+
+TRIALS = 3
+CYCLES = 10
+
+EPOCH = 200
+LR = 0.1
+MILESTONES = [160]
+EPOCHL = 120 # After 120 epochs, stop the gradient from the loss prediction module propagated to the target model
+
+MOMENTUM = 0.9
+WDECAY = 5e-4
+
+
+
 
 
 # ============================== 定义两个网络结构 ==============================
@@ -52,6 +84,8 @@ def set_seed(seed=1):
 
 set_seed(50)
 
+device = torch.device('cpu')
+
 # 加载数据
 file_path = 'Dataset/UCI_Concrete_Data.xls'
 data = pd.read_excel(file_path)
@@ -78,7 +112,8 @@ y_test_tensor = torch.tensor(y_test, dtype=torch.float32)
 test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 #
-
+train_dataset = TensorDataset(X_train_full_tensor, y_train_full_tensor)
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
 # ============================== 定义主动学习相关函数 ==============================
 def LossPredLoss(input, target, margin=1.0, reduction='mean'):
@@ -122,18 +157,134 @@ def get_uncertainty(models, unlabeled_loader):
     return uncertainty.cpu()
 
 
-if __name__ == '__main__':
-    pass
 
 # ============================== 定义深度学习相关函数 ==============================
 
 # Train Utils
 iters = 0
 def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, vis=None, plot_data=None):
+    models['backbone'].train()
+    models['module'].train()
+    global iters
+
+    for data in tqdm(dataloaders['train'], leave=False, total=len(dataloaders['train'])):
+        inputs = data[0] #TODO
+        labels = data[1]
+        iters += 1
+
+        optimizers['backbone'].zero_grad()
+        optimizers['module'].zero_grad()
+
+        scores, features = models['backbone'](inputs)
+        target_loss = criterion(scores, labels)
+
+        if epoch > epoch_loss: #TODO 有用么
+            # After 120 epochs, stop the gradient from the loss prediction module propagated to the target model.
+            features[0] = features[0].detach()
+            features[1] = features[1].detach()
+            features[2] = features[2].detach()
+
+        pred_loss = models['module'](features)
+        pred_loss = pred_loss.view(pred_loss.size(0))
+
+        m_backbone_loss = torch.sum(target_loss) / target_loss.size(0)
+        m_module_loss = LossPredLoss(pred_loss, target_loss, margin=MARGIN) #TODO 参数赋值
+        loss = m_backbone_loss + WEIGHT * m_module_loss
+
+        loss.backward()
+        optimizers['backbone'].step()
+        optimizers['module'].step() # 更新模型参数
+
+        # Visualize
+        if (iters % 100 == 0) and (vis != None) and (plot_data != None):
+            plot_data['X'].append(iters)
+            plot_data['Y'].append([
+                m_backbone_loss.item(),
+                m_module_loss.item(),
+                loss.item()
+            ])
+            vis.line(
+                X=np.stack([np.array(plot_data['X'])] * len(plot_data['legend']), 1),
+                Y=np.array(plot_data['Y']),
+                opts={
+                    'title': 'Loss over Time',
+                    'legend': plot_data['legend'],
+                    'xlabel': 'Iterations',
+                    'ylabel': 'Loss',
+                    'width': 1200,
+                    'height': 390,
+                },
+                win=1
+            )
+
+# 因为原论文是分类任务，所以需要修改
+def test(models, dataloader, criterion, mode='val'):
+    assert mode == 'val' or mode == 'test'
+    models['backbone'].eval()
+    models['module'].eval()
+
+    test_loss = 0.0
+    with torch.no_grad():
+        for inputs, targets in test_loader:
+            inputs, targets = inputs.to(device), targets.to(device)  # 确保在正确设备上
+            outputs = models['backbone'](inputs)
+            loss = criterion(outputs, targets)
+            test_loss += loss.item() * inputs.size(0)
+
+    test_loss /= len(dataloader.dataset)
+    print(f'Test Loss: {test_loss:.4f}')
+    return test_loss
+
+def train(models, criterion, optimizers, schedulers, dataloaders, num_epochs, epoch_loss):
+    print('>> Train a Model.')
+
+    for epoch in range(num_epochs):
+        schedulers['backbone'].step()
+        schedulers['module'].step()
+
+        train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss)
+
+
+    print('>> Finished.')
+
+def AL_sample():
     pass
 
-def test(models, dataloaders, mode='val'):
-    pass
 
-def train(models, criterion, optimizers, schedulers, dataloaders, num_epochs, epoch_loss, vis, plot_data):
-    pass
+# ============================== 主程序 ==============================
+
+if __name__ == '__main__':
+
+
+    """
+    
+    主动学习采样函数
+    
+    """
+
+    dataloaders = {'train': train_loader, 'test': test_loader}
+    # Model
+    mainnet = MainNet().to(device)
+    lossnet = LossNet().to(device)
+    models = {'backbone': mainnet, 'module': lossnet}
+    torch.backends.cudnn.benchmark = False
+
+    # TODO 插入主动学习循环
+
+    criterion = nn.CrossEntropyLoss(reduction='none')
+    optim_backbone = optim.SGD(models['backbone'].parameters(), lr=LR, momentum=MOMENTUM, weight_decay=WDECAY)
+    optim_module = optim.SGD(models['module'].parameters(), lr=LR, momentum=MOMENTUM, weight_decay=WDECAY)
+    sched_backbone = lr_scheduler.MultiStepLR(optim_backbone, milestones=MILESTONES)
+    sched_module = lr_scheduler.MultiStepLR(optim_module, milestones=MILESTONES)
+
+    optimizers = {'backbone': optim_backbone, 'module': optim_module}
+    schedulers = {'backbone': sched_backbone, 'module': sched_module}
+
+    # Training and test
+    train(models, criterion, optimizers, schedulers, dataloaders, EPOCH, EPOCHL)
+    acc = test(models, dataloaders, mode='test')
+
+
+    # TODO 数据集在每一次主动学习循环中 update
+
+
