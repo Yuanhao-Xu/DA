@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 import visdom
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, TensorDataset
@@ -30,16 +31,13 @@ WEIGHT = 1.0 # lambda
 TRIALS = 3
 CYCLES = 10
 
-EPOCH = 200
+EPOCH = 100
 LR = 0.1
 MILESTONES = [160]
 EPOCHL = 120 # After 120 epochs, stop the gradient from the loss prediction module propagated to the target model
 
 MOMENTUM = 0.9
 WDECAY = 5e-4
-
-
-
 
 
 # ============================== 定义两个网络结构 ==============================
@@ -60,17 +58,29 @@ class MainNet(nn.Module):
 
 
 class LossNet(nn.Module):
-    def __init__(self):
+    def __init__(self, interm_dim=16):
         super(LossNet, self).__init__()
-        self.fc1 = nn.Linear(64 + 32 + 16, 128)  # 输入维度为所有中间层特征的拼接
-        self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 1)
+        # 定义每个中间特征的全连接层
+        self.fc1 = nn.Linear(64, interm_dim)
+        self.fc2 = nn.Linear(32, interm_dim)
+        self.fc3 = nn.Linear(16, interm_dim)
 
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        x = self.fc3(x)
+        # 最终全连接层，将拼接后的特征映射到一个标量值
+        self.linear = nn.Linear(3 * interm_dim, 1)
+
+    def forward(self, features):
+        # 提取每个中间特征并通过全连接层
+        x1 = F.relu(self.fc1(features[0]))
+        x2 = F.relu(self.fc2(features[1]))
+        x3 = F.relu(self.fc3(features[2]))
+
+        # 拼接所有特征
+        x = torch.cat((x1, x2, x3), dim=1)
+
+        # 通过最终全连接层，得到损失预测值
+        x = self.linear(x)
         return x
+
 # # 将所有中间层特征拼接在一起
 # loss_inputs = torch.cat(features, dim=1)  # shape: (batch_size, 64 + 32 + 16)
 
@@ -111,17 +121,16 @@ y_test_tensor = torch.tensor(y_test, dtype=torch.float32)
 # 规划测试集
 test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
-#
+# TODO 规划训练集（暂时）
 train_dataset = TensorDataset(X_train_full_tensor, y_train_full_tensor)
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
 # ============================== 定义主动学习相关函数 ==============================
-def LossPredLoss(input, target, margin=1.0, reduction='mean'):
+def LossPredLoss(input, target, margin=1.0, reduction='mean'): #inout 是过lossnet后得到的预测损失，target是训练集中使用mainnet得到的真实损失
     assert len(input) % 2 == 0, 'the batch size is not even.'
     assert input.shape == input.flip(0).shape
 
-    input = (input - input.flip(0))[
-            :len(input) // 2]  # [l_1 - l_2B, l_2 - l_2B-1, ... , l_B - l_B+1], where batch_size = 2B
+    input = (input - input.flip(0))[:len(input) // 2]  # [l_1 - l_2B, l_2 - l_2B-1, ... , l_B - l_B+1], where batch_size = 2B
     target = (target - target.flip(0))[:len(target) // 2]
     target = target.detach()
 
@@ -167,7 +176,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, v
     models['module'].train()
     global iters
 
-    for data in tqdm(dataloaders['train'], leave=False, total=len(dataloaders['train'])):
+    for data in dataloaders['train']:
         inputs = data[0] #TODO
         labels = data[1]
         iters += 1
@@ -176,7 +185,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, v
         optimizers['module'].zero_grad()
 
         scores, features = models['backbone'](inputs)
-        target_loss = criterion(scores, labels)
+        target_loss = criterion(scores, labels) # 传入一个现有的criterion是为了计算主网络的target—_loss，是最终loss的一部分
 
         if epoch > epoch_loss: #TODO 有用么
             # After 120 epochs, stop the gradient from the loss prediction module propagated to the target model.
@@ -195,43 +204,43 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, v
         optimizers['backbone'].step()
         optimizers['module'].step() # 更新模型参数
 
-        # Visualize
-        if (iters % 100 == 0) and (vis != None) and (plot_data != None):
-            plot_data['X'].append(iters)
-            plot_data['Y'].append([
-                m_backbone_loss.item(),
-                m_module_loss.item(),
-                loss.item()
-            ])
-            vis.line(
-                X=np.stack([np.array(plot_data['X'])] * len(plot_data['legend']), 1),
-                Y=np.array(plot_data['Y']),
-                opts={
-                    'title': 'Loss over Time',
-                    'legend': plot_data['legend'],
-                    'xlabel': 'Iterations',
-                    'ylabel': 'Loss',
-                    'width': 1200,
-                    'height': 390,
-                },
-                win=1
-            )
+        # # Visualize
+        # if (iters % 100 == 0) and (vis != None) and (plot_data != None):
+        #     plot_data['X'].append(iters)
+        #     plot_data['Y'].append([
+        #         m_backbone_loss.item(),
+        #         m_module_loss.item(),
+        #         loss.item()
+        #     ])
+        #     vis.line(
+        #         X=np.stack([np.array(plot_data['X'])] * len(plot_data['legend']), 1),
+        #         Y=np.array(plot_data['Y']),
+        #         opts={
+        #             'title': 'Loss over Time',
+        #             'legend': plot_data['legend'],
+        #             'xlabel': 'Iterations',
+        #             'ylabel': 'Loss',
+        #             'width': 1200,
+        #             'height': 390,
+        #         },
+        #         win=1
+        #     )
 
 # 因为原论文是分类任务，所以需要修改
-def test(models, dataloader, criterion, mode='val'):
+def test(models, dataloaders, criterion, mode='val'):
     assert mode == 'val' or mode == 'test'
     models['backbone'].eval()
     models['module'].eval()
 
     test_loss = 0.0
     with torch.no_grad():
-        for inputs, targets in test_loader:
+        for inputs, targets in dataloaders['test']:
             inputs, targets = inputs.to(device), targets.to(device)  # 确保在正确设备上
-            outputs = models['backbone'](inputs)
+            outputs, features = models['backbone'](inputs)
             loss = criterion(outputs, targets)
             test_loss += loss.item() * inputs.size(0)
 
-    test_loss /= len(dataloader.dataset)
+    test_loss /= len(dataloaders['test'].dataset)
     print(f'Test Loss: {test_loss:.4f}')
     return test_loss
 
@@ -271,7 +280,8 @@ if __name__ == '__main__':
 
     # TODO 插入主动学习循环
 
-    criterion = nn.CrossEntropyLoss(reduction='none')
+    criterion_train = nn.MSELoss(reduction='none') # 逐个计算损失
+    criterion_test = nn.MSELoss()
     optim_backbone = optim.SGD(models['backbone'].parameters(), lr=LR, momentum=MOMENTUM, weight_decay=WDECAY)
     optim_module = optim.SGD(models['module'].parameters(), lr=LR, momentum=MOMENTUM, weight_decay=WDECAY)
     sched_backbone = lr_scheduler.MultiStepLR(optim_backbone, milestones=MILESTONES)
@@ -281,8 +291,8 @@ if __name__ == '__main__':
     schedulers = {'backbone': sched_backbone, 'module': sched_module}
 
     # Training and test
-    train(models, criterion, optimizers, schedulers, dataloaders, EPOCH, EPOCHL)
-    acc = test(models, dataloaders, mode='test')
+    train(models, criterion_train, optimizers, schedulers, dataloaders, EPOCH, EPOCHL)
+    test(models, dataloaders, criterion_test, mode='test')
 
 
     # TODO 数据集在每一次主动学习循环中 update
