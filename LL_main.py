@@ -29,8 +29,8 @@ SUBSET    = 50 # M 已改，每次主动学习循环加入的样本数
 ADDENDUM  = 50 # K 已改，每次采样的个数
 ADDENDUM_init  = 100  # 自定义，初始数据集长度,
 
-MARGIN = 10.0 # xi
-WEIGHT = 1.0 # lambda
+MARGIN = 0.7 # xi
+WEIGHT = 1.5 # lambda
 
 TRIALS = 3
 CYCLES = 14 # 已改，主动学习循环次数
@@ -88,10 +88,14 @@ class LossNet(nn.Module):
 
 # ============================== 数据预处理 ==============================
 # 定义随机种子
-def set_seed(seed=1):
-    np.random.seed(seed)
+def set_seed(seed):
     torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # 如果使用多GPU
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True  # 确保确定性行为
+    torch.backends.cudnn.benchmark = False  # 确保可重复性
 
 
 set_seed(50)
