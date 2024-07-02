@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from torch.utils.data import DataLoader, TensorDataset
 
 # 1.随机采样baseline 精确度出图
@@ -213,3 +213,34 @@ active_learning_training(
     num_cycles=10,  # 为了测试方便，可以减少循环次数
     acquisition_size=50
 )
+
+
+# 使用训练好的模型预测测试集中的数据，并和测试集的target对比，生成一张测试集中所有预测值和真实值对比的图像
+def plot_predictions(model, test_loader, scaler_y):
+    model.eval()
+    predictions = []
+    targets = []
+    with torch.no_grad():
+        for inputs, targets_batch in test_loader:
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            predictions.extend(outputs.cpu().numpy())
+            targets.extend(targets_batch.numpy())
+
+    # 反标准化
+    predictions = scaler_y.inverse_transform(predictions)
+    targets = scaler_y.inverse_transform(targets)
+
+    # 绘图
+    plt.figure(figsize=(10, 6))
+    plt.plot(targets, label='True Values')
+    plt.plot(predictions, label='Predicted Values')
+    plt.xlabel('Samples')
+    plt.ylabel('Concrete Compressive Strength')
+    plt.legend()
+    plt.title('Comparison of True and Predicted Values')
+    plt.grid(True)
+    plt.show()
+
+# 预测并绘图
+plot_predictions(model, test_loader, scaler_y)

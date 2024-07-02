@@ -11,13 +11,14 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, TensorDataset, Subset
 import matplotlib.pyplot as plt
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 
 
 # ============================== 日志 ==============================
-# 先不加入主动学习采样策略，测试训练过程
+# 0701 测试loss的预测能力
+# 数据预处理部分要先改一下
 
 # ============================== 参数设置 ==============================
 
@@ -25,18 +26,19 @@ NUM_TRAIN = 1300 # N 已改
 NUM_VAL   = 50000 - NUM_TRAIN
 BATCH     = 32 # B 已改，主动学习一批的数量
 SUBSET    = 50 # M 已改，每次主动学习循环加入的样本数
-ADDENDUM  = 50 # K 已改，初始数据集长度,以及每次采样的个数
+ADDENDUM  = 50 # K 已改，每次采样的个数
+ADDENDUM_init  = 100  # 自定义，初始数据集长度,
 
-MARGIN = 1.0 # xi
+MARGIN = 10.0 # xi
 WEIGHT = 1.0 # lambda
 
 TRIALS = 3
-CYCLES = 10 # 已改，主动学习循环次数
+CYCLES = 14 # 已改，主动学习循环次数
 
-EPOCH = 10
+EPOCH = 50
 LR = 0.001
 MILESTONES = [160]
-EPOCHL = 120 # After 120 epochs, stop the gradient from the loss prediction module propagated to the target model
+EPOCHL = 30 # After 120 epochs, stop the gradient from the loss prediction module propagated to the target model
 
 MOMENTUM = 0.9
 WDECAY = 5e-4
@@ -83,8 +85,6 @@ class LossNet(nn.Module):
         x = self.linear(x)
         return x
 
-# # 将所有中间层特征拼接在一起
-# loss_inputs = torch.cat(features, dim=1)  # shape: (batch_size, 64 + 32 + 16)
 
 # ============================== 数据预处理 ==============================
 # 定义随机种子
@@ -106,8 +106,8 @@ data = pd.read_excel(file_path)
 X = data.iloc[:, :-1].values  # 转化np数组
 y = data.iloc[:, -1].values.reshape(-1, 1)  # 目标变量
 # 实例
-scaler_X = StandardScaler()
-scaler_y = StandardScaler()
+scaler_X = MinMaxScaler()
+scaler_y = MinMaxScaler()
 # 标准化
 X = scaler_X.fit_transform(X)
 y = scaler_y.fit_transform(y)
@@ -135,7 +135,7 @@ def LossPredLoss(input, target, margin=1.0, reduction='mean'): #inout 是过loss
     input = (input - input.flip(0))[:len(input) // 2]  # [l_1 - l_2B, l_2 - l_2B-1, ... , l_B - l_B+1], where batch_size = 2B
     target = (target - target.flip(0))[:len(target) // 2]
     target = target.detach()
-
+    # 这个损失函数说明损失预测模型的实际目的是得到对应数据的损失值的大小关系而不是确定的损失值
     one = 2 * torch.sign(torch.clamp(target, min=0)) - 1  # 1 operation which is defined by the authors
 
     if reduction == 'mean':
@@ -149,10 +149,13 @@ def LossPredLoss(input, target, margin=1.0, reduction='mean'): #inout 是过loss
     return loss
 
 # 计算未标记数据的loss，作为不确定性度量
-def get_uncertainty(models, unlabeled_loader):
+def get_uncertainty(models, unlabeled_loader, criterion):
     models['backbone'].eval()
     models['module'].eval()
     uncertainty = torch.tensor([])
+    # 创建一个变量，用于记录使用lossnet预测未标记数据集“比较大小”的精确度
+    accuracy_list = []
+
 
     with torch.no_grad():
         for (inputs, labels) in unlabeled_loader:
@@ -161,11 +164,36 @@ def get_uncertainty(models, unlabeled_loader):
 
             scores, features = models['backbone'](inputs) #模型返回了预测值和中间层特征组成的元组
             pred_loss = models['module'](features)  # pred_loss = criterion(scores, labels) # ground truth loss
+
             pred_loss = pred_loss.view(pred_loss.size(0))
+            # 评估环节
+
+            target_loss = criterion(scores, labels)
+            target_loss = target_loss.detach()
+            target_loss = target_loss.view(target_loss.size(0))
+            pred_loss_compare = (pred_loss - pred_loss.flip(0))[:len(pred_loss) // 2]
+            real_loss_compare = (target_loss - target_loss.flip(0))[:len(pred_loss) // 2]
+            # 初始化 accuracy
+            accuracy_batch = 0
+            # 比较两个张量相同索引位置的值
+            for val1, val2 in zip(pred_loss_compare, real_loss_compare):
+                if (val1 > 0 and val2 > 0) or (val1 < 0 and val2 < 0):
+                    accuracy_batch += 1
+            accuracy_batch = accuracy_batch / len(pred_loss_compare)
+            accuracy_list.append(accuracy_batch)
+            # 某一批“比较矩阵”的对比
+            # tensor([-0.5520, 0.3524, -0.1835, -0.4242, 0.6650, -0.3441, -0.4357, 0.2084, 0.1111, 0.1558, -0.2874, 0.5138, -0.3408, 0.5229, -0.2080, 0.5975])
+            # tensor([-0.0005, 0.0865, -0.0004, -0.0141, -0.0327, -0.0041, -0.0097, 0.0273, 0.0225, 0.0050, -0.0747, 0.0164, 0.0169, -0.0585, -0.0400, 0.0346])
+
+
 
             uncertainty = torch.cat((uncertainty, pred_loss), 0) #合并所有批次的预测损失
+    accuracy = sum(accuracy_list) / len(accuracy_list)
 
-    return uncertainty.cpu()
+
+    return uncertainty.cpu(), accuracy
+
+
 
 
 
@@ -187,7 +215,7 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, v
         optimizers['module'].zero_grad()
 
         scores, features = models['backbone'](inputs)
-        target_loss = criterion(scores, labels) # 传入一个现有的criterion是为了计算主网络的target—_loss，是最终loss的一部分
+        target_loss = criterion(scores, labels) # 传入一个现有的criterion是为了计算主网络的target_loss，是最终loss的一部分
 
         if epoch > epoch_loss: #TODO 有用么
             # After 120 epochs, stop the gradient from the loss prediction module propagated to the target model.
@@ -244,14 +272,15 @@ def test(models, dataloaders, criterion, mode='val'):
 
     test_loss /= len(dataloaders['test'].dataset)
     print(f'Test Loss: {test_loss:.4f}')
+
     return test_loss
 
-def train(models, criterion, optimizers, schedulers, dataloaders, num_epochs, epoch_loss):
+def train(models, criterion, optimizers, dataloaders, num_epochs, epoch_loss):
     print('>> Train a Model.')
 
     for epoch in range(num_epochs):
-        schedulers['backbone'].step()
-        schedulers['module'].step()
+        # schedulers['backbone'].step()
+        # schedulers['module'].step()
 
         train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss)
 
@@ -261,24 +290,47 @@ def train(models, criterion, optimizers, schedulers, dataloaders, num_epochs, ep
 def AL_sample():
     pass
 
+# ============================== 绘图 ==============================
+# 测试集target和pred图像对比
+def plot_predictions(models, dataloaders, scaler_y):
+    models['backbone'].eval()
+    models['module'].eval()
+    predictions = []
+    targets = []
+    with torch.no_grad():
+        for inputs, targets_batch in dataloaders['test']:
+            inputs = inputs.to(device)
+            outputs,_ = models['backbone'](inputs)
+            predictions.extend(outputs.cpu().numpy())
+            targets.extend(targets_batch.numpy())
+
+    # 反标准化
+    predictions = scaler_y.inverse_transform(predictions)
+    targets = scaler_y.inverse_transform(targets)
+
+    # 绘图
+    plt.figure(figsize=(10, 6))
+    plt.plot(targets, label='True Values')
+    plt.plot(predictions, label='Predicted Values')
+    plt.xlabel('Samples')
+    plt.ylabel('Concrete Compressive Strength')
+    plt.legend()
+    plt.title(f'al_cycle:{cycle+1} | Comparison of True and Predicted Values')
+    plt.grid(True)
+    plt.show()
+
 
 # ============================== 主程序 ==============================
 
 if __name__ == '__main__':
-
-    # train_dataset = TensorDataset(X_train_full_tensor, y_train_full_tensor)
-    # train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    #
-
-
 
 
 
     indices = list(range(len(X_train_full)))
     random.shuffle(indices)
     # 标签数据和为标签数据的索引号
-    labeled_set = indices[:ADDENDUM] # 初始数据集长度
-    unlabeled_set = indices[ADDENDUM:]
+    labeled_set = indices[:ADDENDUM_init] # 初始数据集长度
+    unlabeled_set = indices[ADDENDUM_init:]
 
     # 把整个训练集划分为标签子集和非标签子集
     labeled_subset = Subset(train_full_dataset, labeled_set)
@@ -312,17 +364,21 @@ if __name__ == '__main__':
 
         criterion_train = nn.MSELoss(reduction='none') # 逐个计算损失
         criterion_test = nn.MSELoss()
-        optim_backbone = optim.SGD(models['backbone'].parameters(), lr=LR, momentum=MOMENTUM, weight_decay=WDECAY)
-        optim_module = optim.SGD(models['module'].parameters(), lr=LR, momentum=MOMENTUM, weight_decay=WDECAY)
-        sched_backbone = lr_scheduler.MultiStepLR(optim_backbone, milestones=MILESTONES)
-        sched_module = lr_scheduler.MultiStepLR(optim_module, milestones=MILESTONES)
+        optim_backbone = optim.AdamW(models['backbone'].parameters(), lr=LR, weight_decay=WDECAY)
+        optim_module = optim.AdamW(models['module'].parameters(), lr=LR, weight_decay=WDECAY)
+        # sched_backbone = lr_scheduler.MultiStepLR(optim_backbone, milestones=MILESTONES)
+        # sched_module = lr_scheduler.MultiStepLR(optim_module, milestones=MILESTONES)
 
         optimizers = {'backbone': optim_backbone, 'module': optim_module}
-        schedulers = {'backbone': sched_backbone, 'module': sched_module}
+        # schedulers = {'backbone': sched_backbone, 'module': sched_module}
 
         # Training and test
-        train(models, criterion_train, optimizers, schedulers, dataloaders, EPOCH, EPOCHL)
+        train(models, criterion_train, optimizers, dataloaders, EPOCH, EPOCHL)
         acc = test(models, dataloaders, criterion_test, mode='test') # TODO acc目前是test loss，要改成精确度
+
+        # if cycle%3 == 0:
+        #     plot_predictions(models, dataloaders, scaler_y, cycle)
+
         print(f'Cycle {cycle + 1}/{CYCLES} || Label set size {len(labeled_set)}: Test acc {acc}')
 
         random.shuffle(unlabeled_set)
@@ -331,9 +387,9 @@ if __name__ == '__main__':
         # Create unlabeled dataloader for the unlabeled subset
         # unlabeled_dataset = TensorDataset(X_pool, y_pool)
         unlabeled_loader = DataLoader(unlabeled_subset, batch_size=BATCH, shuffle=False)
-
         # Measure uncertainty of each data points in the subset
-        uncertainty = get_uncertainty(models, unlabeled_loader)
+        uncertainty, pred_accu = get_uncertainty(models, unlabeled_loader, criterion_train)
+        print(f"After {cycle} round AL, loss accuracy of unlabeled set: {pred_accu:.2f}")
 
         # Index in ascending order
         arg = np.argsort(uncertainty)
@@ -352,3 +408,7 @@ if __name__ == '__main__':
     # TODO 数据集在每一次主动学习循环中 update
 
 
+
+
+# 预测并绘图
+plot_predictions(models, dataloaders, scaler_y)
