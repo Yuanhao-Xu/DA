@@ -14,6 +14,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
+from sklearn.metrics import r2_score
 
 
 # ============================== 日志 ==============================
@@ -35,7 +36,7 @@ WEIGHT = 1.5 # lambda
 TRIALS = 3
 CYCLES = 14 # 已改，主动学习循环次数
 
-EPOCH = 50
+EPOCH = 100
 LR = 0.001
 MILESTONES = [160]
 EPOCHL = 30 # After 120 epochs, stop the gradient from the loss prediction module propagated to the target model
@@ -276,6 +277,9 @@ def test(models, dataloaders, criterion, mode='val'):
 
     test_loss /= len(dataloaders['test'].dataset)
     print(f'Test Loss: {test_loss:.4f}')
+    # 调用R2评估测试集
+    r2 = r2_score(targets, outputs)
+    print(f"r2_score : {r2:.4f}")
 
     return test_loss
 
@@ -383,7 +387,7 @@ if __name__ == '__main__':
         # if cycle%3 == 0:
         #     plot_predictions(models, dataloaders, scaler_y, cycle)
 
-        print(f'Cycle {cycle + 1}/{CYCLES} || Label set size {len(labeled_set)}: Test acc {acc}')
+        print(f'Cycle {cycle + 1}/{CYCLES} || Label set size {len(labeled_set)}: Test acc {acc:.4f}')
 
         random.shuffle(unlabeled_set)
         # subset = unlabeled_set[:SUBSET]
@@ -393,7 +397,7 @@ if __name__ == '__main__':
         unlabeled_loader = DataLoader(unlabeled_subset, batch_size=BATCH, shuffle=False)
         # Measure uncertainty of each data points in the subset
         uncertainty, pred_accu = get_uncertainty(models, unlabeled_loader, criterion_train)
-        print(f"After {cycle} round AL, loss accuracy of unlabeled set: {pred_accu:.2f}")
+        print(f"After {cycle} round AL, loss accuracy of unlabeled set: {pred_accu:.4f}")
 
         # Index in ascending order
         arg = np.argsort(uncertainty)

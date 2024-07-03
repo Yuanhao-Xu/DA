@@ -1,0 +1,12 @@
+﻿dataname,path,target_columns,target_to_fit
+yin-pullout1,../dataset/pullout/data.csv,Fmax;IFSS,Fmax
+yin-pullout2,../dataset/pullout/data.csv,Fmax;IFSS,IFSS
+concrete_slump_test,../dataset/Concrete_Slump_Test/data.csv,Compressive Strength (28-day)(Mpa),Compressive Strength (28-day)(Mpa)
+uci-concrete,../dataset/uci-concrete/concrete_data.csv,concrete_compressive_strength,concrete_compressive_strength
+bfrc_cs,../dataset/BFRC/data_cs.csv,Compressive Strength (MPa),Compressive Strength (MPa)
+bfrc_fs,../dataset/BFRC/data_fs.csv,Flexural Strength (MPa),Flexural Strength (MPa)
+bfrc_sts,../dataset/BFRC/data_sts.csv,Splitting Tensile Strength (MPa),Splitting Tensile Strength (MPa)
+uhpc_cs,../dataset/uhpc/Compressive_strength.csv,28-day compressive strength (MPa),28-day compressive strength (MPa)
+uhpc_fs,../dataset/uhpc/Flexural_strength.csv,28-day flexural strength (MPa),28-day flexural strength (MPa)
+uhpc_ss,../dataset/uhpc/Mini_slump_spread.csv,Mini-slump spread (mm),Mini-slump spread (mm)
+uhpc_p,../dataset/uhpc/Porosity.csv,28-day porosity (%),28-day porosity (%)
