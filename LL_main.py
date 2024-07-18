@@ -20,6 +20,7 @@ from sklearn.metrics import r2_score
 # ============================== 日志 ==============================
 # 0701 测试loss的预测能力
 # 数据预处理部分要先改一下
+# 0718 和随机采样比较
 
 # ============================== 参数设置 ==============================
 
@@ -36,7 +37,7 @@ WEIGHT = 1.5 # lambda
 TRIALS = 3
 CYCLES = 14 # 已改，主动学习循环次数
 
-EPOCH = 100
+EPOCH = 200
 LR = 0.001
 MILESTONES = [160]
 EPOCHL = 30 # After 120 epochs, stop the gradient from the loss prediction module propagated to the target model
@@ -279,9 +280,10 @@ def test(models, dataloaders, criterion, mode='val'):
     print(f'Test Loss: {test_loss:.4f}')
     # 调用R2评估测试集
     r2 = r2_score(targets, outputs)
+    r2 = round(r2,4)
     print(f"r2_score : {r2:.4f}")
 
-    return test_loss
+    return test_loss,r2
 
 def train(models, criterion, optimizers, dataloaders, num_epochs, epoch_loss):
     print('>> Train a Model.')
@@ -329,94 +331,101 @@ def plot_predictions(models, dataloaders, scaler_y):
 
 
 # ============================== 主程序 ==============================
-
-if __name__ == '__main__':
-
+plt.ion()
 
 
-    indices = list(range(len(X_train_full)))
-    random.shuffle(indices)
-    # 标签数据和为标签数据的索引号
-    labeled_set = indices[:ADDENDUM_init] # 初始数据集长度
-    unlabeled_set = indices[ADDENDUM_init:]
+indices = list(range(len(X_train_full)))
+random.shuffle(indices)
+# 标签数据和为标签数据的索引号
+labeled_set = indices[:ADDENDUM_init] # 初始数据集长度
+unlabeled_set = indices[ADDENDUM_init:]
+
+# 把整个训练集划分为标签子集和非标签子集
+labeled_subset = Subset(train_full_dataset, labeled_set)
+unlabeled_subset = Subset(train_full_dataset, unlabeled_set)
+
+# # 分离特征和标签
+# X_initial, y_initial = labeled_subset
+# X_pool, y_pool = unlabeled_subset
+
+# 建立标签子集的训练集
+# train_dataset = TensorDataset(X_initial, y_initial)
+train_loader = DataLoader(labeled_subset, batch_size=BATCH, shuffle=True)
+
+
+"""
+↑
+主动学习采样
+↑
+"""
+
+dataloaders = {'train': train_loader, 'test': test_loader}
+# Model
+mainnet = MainNet().to(device)
+lossnet = LossNet().to(device)
+models = {'backbone': mainnet, 'module': lossnet}
+torch.backends.cudnn.benchmark = False
+
+# TODO 插入主动学习循环
+
+test_losses = []
+test_R2s = []
+for cycle in range(CYCLES):
+    print(f"Active Learning Cycle {cycle + 1}/{CYCLES}")
+
+    criterion_train = nn.MSELoss(reduction='none') # 逐个计算损失
+    criterion_test = nn.MSELoss()
+    optim_backbone = optim.AdamW(models['backbone'].parameters(), lr=LR, weight_decay=WDECAY)
+    optim_module = optim.AdamW(models['module'].parameters(), lr=LR, weight_decay=WDECAY)
+    # sched_backbone = lr_scheduler.MultiStepLR(optim_backbone, milestones=MILESTONES)
+    # sched_module = lr_scheduler.MultiStepLR(optim_module, milestones=MILESTONES)
+
+    optimizers = {'backbone': optim_backbone, 'module': optim_module}
+    # schedulers = {'backbone': sched_backbone, 'module': sched_module}
+
+    # Training and test
+    train(models, criterion_train, optimizers, dataloaders, EPOCH, EPOCHL)
+    test_loss = test(models, dataloaders, criterion_test, mode='test')[0] # TODO acc目前是test loss，要改成精确度
+    test_R2 = test(models, dataloaders, criterion_test, mode='test')[1]
+    test_losses.append(test_loss)
+    test_R2s.append(test_R2)
+
+
+    # if cycle%3 == 0:
+    #     plot_predictions(models, dataloaders, scaler_y, cycle)
+
+    print(f'Cycle {cycle + 1}/{CYCLES} || Label set size {len(labeled_set)}: Test acc {test_R2:.4f}')
+
+    random.shuffle(unlabeled_set)
+    # subset = unlabeled_set[:SUBSET]
+
+    # Create unlabeled dataloader for the unlabeled subset
+    # unlabeled_dataset = TensorDataset(X_pool, y_pool)
+    unlabeled_loader = DataLoader(unlabeled_subset, batch_size=BATCH, shuffle=False)
+    # Measure uncertainty of each data points in the subset
+    uncertainty, pred_accu = get_uncertainty(models, unlabeled_loader, criterion_train)
+    print(f"After {cycle} round AL, loss accuracy of unlabeled set: {pred_accu:.4f}")
+
+    # Index in ascending order
+    arg = np.argsort(uncertainty)
+
+    # Update the labeled dataset and the unlabeled dataset, respectively
+    labeled_set += list(arg[-ADDENDUM:].numpy())
+    unlabeled_set = list(arg[:-ADDENDUM].numpy())
 
     # 把整个训练集划分为标签子集和非标签子集
     labeled_subset = Subset(train_full_dataset, labeled_set)
-    unlabeled_subset = Subset(train_full_dataset, unlabeled_set)
-
-    # # 分离特征和标签
-    # X_initial, y_initial = labeled_subset
-    # X_pool, y_pool = unlabeled_subset
+    unlabeled_subset = Subset(train_full_dataset, labeled_set)
 
     # 建立标签子集的训练集
-    # train_dataset = TensorDataset(X_initial, y_initial)
     train_loader = DataLoader(labeled_subset, batch_size=BATCH, shuffle=True)
 
-
-    """
-    ↑
-    主动学习采样
-    ↑
-    """
-
-    dataloaders = {'train': train_loader, 'test': test_loader}
-    # Model
-    mainnet = MainNet().to(device)
-    lossnet = LossNet().to(device)
-    models = {'backbone': mainnet, 'module': lossnet}
-    torch.backends.cudnn.benchmark = False
-
-    # TODO 插入主动学习循环
-    for cycle in range(CYCLES):
-        print(f"Active Learning Cycle {cycle + 1}/{CYCLES}")
-
-        criterion_train = nn.MSELoss(reduction='none') # 逐个计算损失
-        criterion_test = nn.MSELoss()
-        optim_backbone = optim.AdamW(models['backbone'].parameters(), lr=LR, weight_decay=WDECAY)
-        optim_module = optim.AdamW(models['module'].parameters(), lr=LR, weight_decay=WDECAY)
-        # sched_backbone = lr_scheduler.MultiStepLR(optim_backbone, milestones=MILESTONES)
-        # sched_module = lr_scheduler.MultiStepLR(optim_module, milestones=MILESTONES)
-
-        optimizers = {'backbone': optim_backbone, 'module': optim_module}
-        # schedulers = {'backbone': sched_backbone, 'module': sched_module}
-
-        # Training and test
-        train(models, criterion_train, optimizers, dataloaders, EPOCH, EPOCHL)
-        acc = test(models, dataloaders, criterion_test, mode='test') # TODO acc目前是test loss，要改成精确度
-
-        # if cycle%3 == 0:
-        #     plot_predictions(models, dataloaders, scaler_y, cycle)
-
-        print(f'Cycle {cycle + 1}/{CYCLES} || Label set size {len(labeled_set)}: Test acc {acc:.4f}')
-
-        random.shuffle(unlabeled_set)
-        # subset = unlabeled_set[:SUBSET]
-
-        # Create unlabeled dataloader for the unlabeled subset
-        # unlabeled_dataset = TensorDataset(X_pool, y_pool)
-        unlabeled_loader = DataLoader(unlabeled_subset, batch_size=BATCH, shuffle=False)
-        # Measure uncertainty of each data points in the subset
-        uncertainty, pred_accu = get_uncertainty(models, unlabeled_loader, criterion_train)
-        print(f"After {cycle} round AL, loss accuracy of unlabeled set: {pred_accu:.4f}")
-
-        # Index in ascending order
-        arg = np.argsort(uncertainty)
-
-        # Update the labeled dataset and the unlabeled dataset, respectively
-        labeled_set += list(arg[-ADDENDUM:].numpy())
-        unlabeled_set = list(arg[:-ADDENDUM].numpy())
-
-        # 把整个训练集划分为标签子集和非标签子集
-        labeled_subset = Subset(train_full_dataset, labeled_set)
-        unlabeled_subset = Subset(train_full_dataset, labeled_set)
-
-        # 建立标签子集的训练集
-        train_loader = DataLoader(labeled_subset, batch_size=BATCH, shuffle=True)
-
-    # TODO 数据集在每一次主动学习循环中 update
+# TODO 数据集在每一次主动学习循环中 update
 
 
 
 
 # 预测并绘图
 plot_predictions(models, dataloaders, scaler_y)
+
+LL_R2_Score = test_R2s

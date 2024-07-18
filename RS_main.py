@@ -1,4 +1,5 @@
 # CreatTime 2024/6/24
+import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -8,17 +9,24 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from torch.utils.data import DataLoader, TensorDataset
+from sklearn.metrics import r2_score
 
 # 1.随机采样baseline 精确度出图
 # 2.部署learn loss策略
 
+plt.ion()
 # 设置随机种子
 
 
-def set_seed(seed=1):
-    np.random.seed(seed)
+
+def set_seed(seed):
     torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # 如果使用多GPU
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True  # 确保确定性行为
+    torch.backends.cudnn.benchmark = False  # 确保可重复性
 
 
 set_seed(50)
@@ -31,8 +39,8 @@ data = pd.read_excel(file_path)
 X = data.iloc[:, :-1].values  # 转化np数组
 y = data.iloc[:, -1].values.reshape(-1, 1)  # 目标变量
 # 实例
-scaler_X = StandardScaler()
-scaler_y = StandardScaler()
+scaler_X = MinMaxScaler()
+scaler_y = MinMaxScaler()
 # 标准化
 X = scaler_X.fit_transform(X)
 y = scaler_y.fit_transform(y)
@@ -96,10 +104,15 @@ def evaluate_model(model, test_loader, criterion):
             outputs = model(inputs)
             loss = criterion(outputs, targets)
             test_loss += loss.item() * inputs.size(0)
+            # 调用R2评估测试集
+            r2 = r2_score(targets, outputs)
+            r2 = round(r2,4)
 
     test_loss /= len(test_loader.dataset)
     print(f'Test Loss: {test_loss:.4f}')
-    return test_loss
+
+
+    return test_loss,r2
 
 
 # 计算精确度
@@ -130,6 +143,7 @@ def active_learning_training(initial_data, full_data, model, criterion, optimize
 
     test_losses = []
     accuracies = []
+    test_R2s = []
 
     for cycle in range(num_cycles):
         print(f"Active Learning Cycle {cycle + 1}/{num_cycles}")
@@ -142,8 +156,10 @@ def active_learning_training(initial_data, full_data, model, criterion, optimize
         model = train_model(model, train_loader, criterion, optimizer, epochs)
 
         # 测试模型
-        test_loss = evaluate_model(model, test_loader, criterion)
+        test_loss = evaluate_model(model, test_loader, criterion)[0]
+        test_R2 = evaluate_model(model, test_loader, criterion)[1]
         test_losses.append(test_loss)
+        test_R2s.append(test_R2)
 
         # 计算精确度
         accuracy = compute_accuracy(model, test_loader, scaler_y)
@@ -166,7 +182,7 @@ def active_learning_training(initial_data, full_data, model, criterion, optimize
             print("Pool exhausted")
             break
 
-    # 可视化测试损失和精确度
+    # 可视化测试损失和R2
     plt.figure(figsize=(12, 5))
 
     plt.subplot(1, 2, 1)
@@ -178,15 +194,16 @@ def active_learning_training(initial_data, full_data, model, criterion, optimize
     plt.grid(True)
 
     plt.subplot(1, 2, 2)
-    plt.plot(range(1, len(accuracies) + 1), accuracies, label='Accuracy (%)')
+    plt.plot(range(1, len(test_R2s) + 1), accuracies, label='Accuracy')
     plt.xlabel('Active Learning Cycle')
-    plt.ylabel('Accuracy (%)')
+    plt.ylabel('Accuracy')
     plt.legend()
     plt.title('Active Learning Accuracy Over Cycles')
     plt.grid(True)
 
     plt.tight_layout()
     plt.show()
+    return test_R2s
 
 
 # 设置设备为 CPU
@@ -195,22 +212,24 @@ device = torch.device('cpu')
 # 初始化模型
 model = ConcreteNet().to(device)  # 确保模型在 CPU 上
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.AdamW(model.parameters(), lr=0.001)
 
 # 将初始训练数据分割为一小部分
-initial_size = 50
+initial_size = 100
 X_initial, y_initial = X_train_full_tensor[:initial_size], y_train_full_tensor[:initial_size]
 X_pool, y_pool = X_train_full_tensor[initial_size:], y_train_full_tensor[initial_size:]
 
 # 执行主动学习过程
-active_learning_training(
+
+
+RS_R2_Score = active_learning_training(
     initial_data=(X_initial, y_initial),
     full_data=(X_pool, y_pool),
     model=model,
     criterion=criterion,
     optimizer=optimizer,
-    epochs=20,
-    num_cycles=10,  # 为了测试方便，可以减少循环次数
+    epochs=200,
+    num_cycles=14,  # 为了测试方便，可以减少循环次数
     acquisition_size=50
 )
 
@@ -244,3 +263,6 @@ def plot_predictions(model, test_loader, scaler_y):
 
 # 预测并绘图
 plot_predictions(model, test_loader, scaler_y)
+
+# RS [0.582, 0.628, 0.774, 0.856, 0.902, 0.93, 0.92, 0.923, 0.928, 0.885, 0.904, 0.866, 0.932, 0.946]
+# LL [0.3193, 0.5268, 0.6639, 0.7662, 0.8233, 0.8364, 0.8263, 0.8415, 0.8086, 0.8346, 0.8079, 0.8085, 0.8343, 0.8455]
