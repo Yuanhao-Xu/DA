@@ -228,7 +228,7 @@ RS_R2_Score = active_learning_training(
     model=model,
     criterion=criterion,
     optimizer=optimizer,
-    epochs=200,
+    epochs=500,
     num_cycles=14,  # 为了测试方便，可以减少循环次数
     acquisition_size=50
 )
