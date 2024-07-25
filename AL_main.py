@@ -17,19 +17,27 @@ from sklearn.metrics import r2_score
 from data_process import (X_train_full, X_test, y_train_full, y_test,
                           train_full_dataset, test_dataset, test_loader)
 from pub_nnModel import ConcreteNet
+from RS.RS_strategy import RS
+from LL4AL.LL_main_pro import LL4AL
 
+def set_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # 如果使用多GPU
+    np.random.seed(seed)
+    random.seed(seed)
 
-
-
+set_seed(50)
 
 # ==========参数==========
-strategy = "RS"
+strategy = "LL4AL"
 
 ADDENDUM_init = 100
 BATCH = 32
 
 num_cycles = 14
 epochs = 500
+addendum_size = 50
 
 
 # ==========深度学习参数==========
@@ -74,7 +82,8 @@ def evaluate_model(model, test_loader, criterion):
             r2 = round(r2,4)
 
     test_loss /= len(test_loader.dataset)
-    print(f'Test Loss: {test_loss:.4f}')
+    # print(f"Test Loss: {test_loss:.4f}")
+    print(f"r2_score:{r2}")
 
 
     return test_loss,r2
@@ -125,4 +134,24 @@ for cycle in range(num_cycles):
     """
 
     if strategy == "RS":
-
+        train_loader = RS(train_full_dataset, indices, addendum_size, ADDENDUM_init, BATCH, cycle)
+        """
+        train_full_dataset:完整训练集
+        indices:完整训练集乱序的索引
+        addendum_size:增加的数据量
+        ADDENDUM_init:初始数据量
+        BATCH:略
+        cycle:循环数
+        """
+        # [0.7905, 0.8201, 0.8822, 0.8908, 0.9135, 0.9193, 0.9129, 0.9091, 0.9242, 0.8542, 0.8471, 0.9042, 0.9006, 0.9121]
+    if strategy == "LL4AL":
+        train_loader, unlabeled_subset = LL4AL(train_full_dataset, train_loader, labeled_set, unlabeled_set, unlabeled_subset, cycle)
+        """
+        train_full_dataset:完整训练集
+        train_loader:初始训练加载器
+        labeled_set:
+        unlabeled_set:
+        unlabeled_subset:
+        cycle:
+        """
+        # [0.7672, 0.8395, 0.8732, 0.88, 0.8699, 0.8397, 0.8413, 0.8357, 0.8372, 0.8435, 0.8536, 0.8751, 0.8974, 0.9061]

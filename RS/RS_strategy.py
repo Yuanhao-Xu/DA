@@ -2,12 +2,12 @@
 
 import numpy as np
 import torch
+from torch.utils.data import DataLoader, TensorDataset, Subset
 
-
-def RS(labeled_subset, unlabeled_subset, addendum_size):
-    X_unlabeled, y_unlabeled = unlabeled_subset
-    X_initial, y_initial = labeled_subset
-    indices = np.random.choice(len(X_unlabeled), addendum_size, replace=False)
-
-    labeled_set += indices
-    unlabeled_set -= indices
+def RS(train_full_dataset, indices, addendum_size, ADDENDUM_init, BATCH, cycle):
+    labeled_set = indices[:ADDENDUM_init+addendum_size*(cycle+1)]  # 初始数据集长度
+    unlabeled_set = indices[ADDENDUM_init:]
+    # 把整个训练集划分为标签子集和非标签子集
+    labeled_subset = Subset(train_full_dataset, labeled_set)
+    unlabeled_subset = Subset(train_full_dataset, unlabeled_set)
+    return DataLoader(labeled_subset, batch_size=BATCH, shuffle=True)
