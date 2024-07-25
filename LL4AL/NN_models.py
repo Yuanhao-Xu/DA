@@ -48,3 +48,4 @@ class LossNet(nn.Module):
         # 通过最终全连接层，得到损失预测值
         x = self.linear(x)
         return x
+
