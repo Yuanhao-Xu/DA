@@ -19,6 +19,7 @@ from data_process import (X_train_full, X_test, y_train_full, y_test,
 from pub_nnModel import ConcreteNet
 from RS.RS_strat import RS
 from LL4AL.LL_main_pro import LL4AL
+from bmdal_reg.BMDAL_strat import BMDAL
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -30,7 +31,7 @@ def set_seed(seed):
 set_seed(50)
 
 # ==========参数==========
-strategy = "LL4AL"
+strategy = "BMDAL"
 
 ADDENDUM_init = 100
 BATCH = 32
@@ -99,13 +100,34 @@ random.shuffle(indices)
 labeled_set = indices[:ADDENDUM_init] # 初始数据集长度
 unlabeled_set = indices[ADDENDUM_init:]
 
-# 把整个训练集划分为标签子集和非标签子集
-labeled_subset = Subset(train_full_dataset, labeled_set)
-unlabeled_subset = Subset(train_full_dataset, unlabeled_set)
+# # 把整个训练集划分为标签子集和非标签子集
+# labeled_subset = Subset(train_full_dataset, labeled_set)
+# unlabeled_subset = Subset(train_full_dataset, unlabeled_set)
 
-# 分离特征和标签
-# X_initial, y_initial = labeled_subset
-# X_unlabeled, y_unlabeled = unlabeled_subset
+# 定义分离特征和标签的函数
+def split_features_labels(dataset, indices):
+    subset = Subset(dataset, indices)
+    features_list = []
+    labels_list = []
+
+    for i in range(len(subset)):
+        features, label = subset[i]
+        features_list.append(features)
+        labels_list.append(label)
+
+    features_tensor = torch.stack(features_list)
+    labels_tensor = torch.tensor(labels_list)
+
+    return subset, features_tensor, labels_tensor
+labeled_subset, X_initial, y_initial = split_features_labels(train_full_dataset, labeled_set)
+unlabeled_subset, X_unlabeled, y_unlabeled = split_features_labels(train_full_dataset, unlabeled_set)
+
+
+
+
+
+
+
 
 # 建立标签子集的训练集
 # train_dataset = TensorDataset(X_initial, y_initial)
@@ -131,6 +153,7 @@ for cycle in range(num_cycles):
     方法：
     1.RS
     2.LL4AL
+    3.BMDAL
     """
 
     if strategy == "RS":
@@ -156,13 +179,10 @@ for cycle in range(num_cycles):
         """
         # [0.7672, 0.8395, 0.8732, 0.88, 0.8699, 0.8397, 0.8413, 0.8357, 0.8372, 0.8435, 0.8536, 0.8751, 0.8974, 0.9061]
     if strategy == "BMDAL":
+        train_loader, X_initial, y_initial, X_unlabeled, y_unlabeled = BMDAL(X_initial, y_initial, X_unlabeled, y_unlabeled, addendum_size, model, BATCH)
 
         """
-        train_full_dataset:完整训练集
-        ADDENDUM_init:初始数据量
+        X_initial, y_initial, X_unlabeled, y_unlabeled:初始标签集/初始非标签集分离出来的特征和标签(tensor)
         addendum_size:增加的数据量
-        
-        
-        
-        
         """
+        # [0.7672, 0.7089, 0.8243, 0.9165, 0.9431, 0.8835, 0.9038, 0.9607, 0.963, 0.9538, 0.9722, 0.9911, 0.9728, 0.9664]
