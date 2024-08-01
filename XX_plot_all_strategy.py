@@ -2,8 +2,8 @@
 import matplotlib.pyplot as plt
 
 # 导入数据
-from RS_main import RS_R2_Score
-from LL_main import LL_R2_Score
+from XX_RS_main import RS_R2_Score
+from XX_LL_main import LL_R2_Score
 
 
 # Active loop counts

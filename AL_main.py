@@ -17,7 +17,7 @@ from sklearn.metrics import r2_score
 from data_process import (X_train_full, X_test, y_train_full, y_test,
                           train_full_dataset, test_dataset, test_loader)
 from pub_nnModel import ConcreteNet
-from RS.RS_strategy import RS
+from RS.RS_strat import RS
 from LL4AL.LL_main_pro import LL4AL
 
 def set_seed(seed):
@@ -155,3 +155,14 @@ for cycle in range(num_cycles):
         cycle:
         """
         # [0.7672, 0.8395, 0.8732, 0.88, 0.8699, 0.8397, 0.8413, 0.8357, 0.8372, 0.8435, 0.8536, 0.8751, 0.8974, 0.9061]
+    if strategy == "BMDAL":
+
+        """
+        train_full_dataset:完整训练集
+        ADDENDUM_init:初始数据量
+        addendum_size:增加的数据量
+        
+        
+        
+        
+        """
