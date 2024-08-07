@@ -20,6 +20,7 @@ from pub_nnModel import ConcreteNet
 from RS.RS_strat import RS
 from LL4AL.LL_main_pro import LL4AL
 from bmdal_reg.BMDAL_strat import BMDAL
+from MC_Dropout.MCD_strat import MCD
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -31,7 +32,7 @@ def set_seed(seed):
 set_seed(50)
 
 # ==========参数==========
-strategy = "BMDAL"
+strategy = "MCD"
 
 ADDENDUM_init = 100
 BATCH = 32
@@ -186,3 +187,27 @@ for cycle in range(num_cycles):
         addendum_size:增加的数据量
         """
         # [0.7672, 0.7089, 0.8243, 0.9165, 0.9431, 0.8835, 0.9038, 0.9607, 0.963, 0.9538, 0.9722, 0.9911, 0.9728, 0.9664]
+
+    if strategy == "MCD":
+        X_initial, y_initial, X_unlabeled, y_unlabeled = MCD(X_initial, y_initial, X_unlabeled, y_unlabeled, addendum_size)
+        # ↓可以封装一下
+        new_train_dataset = TensorDataset(X_initial, y_initial.unsqueeze(1))
+        train_loader = DataLoader(new_train_dataset, batch_size=BATCH, shuffle=True)
+        # [0.7672, 0.6473, 0.7375, 0.5843, 0.723, 0.7502, 0.896, 0.9066, 0.9505, 0.955, 0.9462, 0.9573, 0.9631, 0.9582]
+
+
+
+
+
+
+
+
+
+
+
+
+
+#MC dropout
+#预期模型最大变化
+#BMDAL
+#L1 L2
