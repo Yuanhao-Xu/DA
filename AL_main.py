@@ -32,7 +32,7 @@ def set_seed(seed):
 set_seed(50)
 
 # ==========参数==========
-strategy = "MCD"
+strategy = "LL4AL"
 
 ADDENDUM_init = 100
 BATCH = 32

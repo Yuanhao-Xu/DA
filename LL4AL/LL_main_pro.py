@@ -196,29 +196,8 @@ def train_epoch(models, criterion, optimizers, dataloaders, epoch, epoch_loss, v
         optimizers['backbone'].step()
         optimizers['module'].step() # 更新模型参数
 
-        # # Visualize
-        # if (iters % 100 == 0) and (vis != None) and (plot_data != None):
-        #     plot_data['X'].append(iters)
-        #     plot_data['Y'].append([
-        #         m_backbone_loss.item(),
-        #         m_module_loss.item(),
-        #         loss.item()
-        #     ])
-        #     vis.line(
-        #         X=np.stack([np.array(plot_data['X'])] * len(plot_data['legend']), 1),
-        #         Y=np.array(plot_data['Y']),
-        #         opts={
-        #             'title': 'Loss over Time',
-        #             'legend': plot_data['legend'],
-        #             'xlabel': 'Iterations',
-        #             'ylabel': 'Loss',
-        #             'width': 1200,
-        #             'height': 390,
-        #         },
-        #         win=1
-        #     )
 
-# 原论文是分类任务，需要修改
+
 def test(models, dataloaders, criterion, mode='val'):
     assert mode == 'val' or mode == 'test'
     models['backbone'].eval()
@@ -256,7 +235,33 @@ def train(models, criterion, optimizers, dataloaders, num_epochs, epoch_loss):
 # ============================== 主程序 ==============================
 # plt.ion()
 
-def LL4AL(train_full_dataset, train_loader, labeled_set, unlabeled_set, unlabeled_subset, cycle):
+def split_features_labels_LL4AL(dataset, indices):
+    subset = Subset(dataset, indices)
+    features_list = []
+    labels_list = []
+
+    for i in range(len(subset)):
+        features, label = subset[i]
+        features_list.append(features)
+        labels_list.append(label)
+
+    features_tensor = torch.stack(features_list)
+    labels_tensor = torch.tensor(labels_list)
+
+    return subset, features_tensor, labels_tensor
+
+
+
+
+
+
+
+def LL4AL(train_full_dataset, labeled_set, unlabeled_set, BATCH, cycle):
+    # 准备工作
+    labeled_subset, X_initial, y_initial = split_features_labels_LL4AL(train_full_dataset, labeled_set)
+    unlabeled_subset, X_unlabeled, y_unlabeled = split_features_labels_LL4AL(train_full_dataset, unlabeled_set)
+    train_loader = DataLoader(labeled_subset, batch_size=BATCH, shuffle=True)
+
     dataloaders = {'train': train_loader}
     # Model
     mainnet = MainNet().to(device)
@@ -273,7 +278,7 @@ def LL4AL(train_full_dataset, train_loader, labeled_set, unlabeled_set, unlabele
     # Training and test
     train(models, criterion_train, optimizers, dataloaders, EPOCH, EPOCHL)
 
-    random.shuffle(unlabeled_set)
+    # random.shuffle(unlabeled_set)
     # subset = unlabeled_set[:SUBSET]
 
     # Create unlabeled dataloader for the unlabeled subset
@@ -286,15 +291,17 @@ def LL4AL(train_full_dataset, train_loader, labeled_set, unlabeled_set, unlabele
     arg = np.argsort(uncertainty)
 
     # Update the labeled dataset and the unlabeled dataset, respectively
-    labeled_set += list(arg[-ADDENDUM*(cycle+1):].numpy())
-    unlabeled_set = list(arg[:-ADDENDUM*(cycle+1)].numpy())
+    labeled_set += list(torch.tensor(unlabeled_set)[arg][-ADDENDUM:].numpy())
+    unlabeled_set = list(torch.tensor(unlabeled_set)[arg][:-ADDENDUM].numpy())
 
     # 把整个训练集划分为标签子集和非标签子集
-    labeled_subset = Subset(train_full_dataset, labeled_set)
-    unlabeled_subset = Subset(train_full_dataset, unlabeled_set)
+    labeled_subset, X_initial, y_initial = split_features_labels_LL4AL(train_full_dataset, labeled_set)
+    unlabeled_subset, X_unlabeled, y_unlabeled = split_features_labels_LL4AL(train_full_dataset, unlabeled_set)
 
 
-    return DataLoader(labeled_subset, batch_size=BATCH, shuffle=True), unlabeled_subset
+    # TODO 改返回值
+    return labeled_subset, unlabeled_subset
+    # return DataLoader(labeled_subset, batch_size=BATCH, shuffle=True), unlabeled_subset
 
 
 
