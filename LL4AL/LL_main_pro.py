@@ -99,7 +99,7 @@ def LossPredLoss(input, target, margin=1.0, reduction='mean'): #inout 是过loss
     target = target.detach()
     # 这个损失函数说明损失预测模型的实际目的是得到对应数据的损失值的大小关系而不是确定的损失值
     one = 2 * torch.sign(torch.clamp(target, min=0)) - 1  # 1 operation which is defined by the authors
-
+    loss = None  # 初始化loss变量
     if reduction == 'mean':
         loss = torch.sum(torch.clamp(margin - one * input, min=0))
         loss = loss / input.size(0)  # Note that the size of input is already halved
@@ -256,7 +256,7 @@ def split_features_labels_LL4AL(dataset, indices):
 
 
 
-def LL4AL(train_full_dataset, labeled_set, unlabeled_set, BATCH, cycle):
+def LL4AL(train_full_dataset, labeled_set, unlabeled_set, BATCH):
     # 准备工作
     labeled_subset, X_initial, y_initial = split_features_labels_LL4AL(train_full_dataset, labeled_set)
     unlabeled_subset, X_unlabeled, y_unlabeled = split_features_labels_LL4AL(train_full_dataset, unlabeled_set)
@@ -300,7 +300,7 @@ def LL4AL(train_full_dataset, labeled_set, unlabeled_set, BATCH, cycle):
 
 
     # TODO 改返回值
-    return labeled_subset, unlabeled_subset
+    return labeled_subset, unlabeled_subset, labeled_set, unlabeled_set
     # return DataLoader(labeled_subset, batch_size=BATCH, shuffle=True), unlabeled_subset
 
 

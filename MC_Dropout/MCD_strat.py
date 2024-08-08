@@ -8,6 +8,9 @@ import torch.optim as optim
 import numpy as np
 from matplotlib import pyplot as plt
 import os
+
+from torch.utils.data import TensorDataset
+
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 samples = 100
@@ -60,8 +63,6 @@ def train_model(model, x_train, y_train, epochs=500, lr=0.01):
 MCD_model = DropoutNN(input, hidden_1, hidden_2, output)
 
 def MCD(x_train, y_train, x_pool, y_pool, addendum_size, n_samples=samples, model=MCD_model):
-    # y_train = y_train.unsqueeze(1) if y_train.dim() == 1 else y_train  # 确保 y_train 的形状为 [batch_size, 1]
-    # y_pool = y_pool.unsqueeze(1) if y_pool.dim() == 1 else y_pool  # 确保 y_pool 的形状为 [pool_size, 1]
 
     train_model(model, x_train, y_train, epochs=500, lr=0.01)
     # 使用 MC Dropout 进行预测
@@ -83,6 +84,9 @@ def MCD(x_train, y_train, x_pool, y_pool, addendum_size, n_samples=samples, mode
     mask[query_indices] = False
     x_pool = x_pool[mask]
     y_pool = y_pool[mask]
+
+    labeled_subset = TensorDataset(x_train, y_train)
+    unlabeled_subset = TensorDataset(x_pool, y_pool.unsqueeze(1))
 
     return x_train, y_train, x_pool, y_pool
 

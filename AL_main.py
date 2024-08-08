@@ -22,6 +22,7 @@ from LL4AL.LL_main_pro import LL4AL
 from bmdal_reg.BMDAL_strat import BMDAL
 from MC_Dropout.MCD_strat import MCD
 
+
 def set_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
@@ -29,7 +30,9 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 
-set_seed(50)
+
+SEED = 50
+set_seed(SEED)
 
 # ==========参数==========
 strategy = "LL4AL"
@@ -41,14 +44,12 @@ num_cycles = 14
 epochs = 500
 addendum_size = 50
 
-
 # ==========深度学习参数==========
 
 device = torch.device('cpu')
 model = ConcreteNet().to(device)  # 确保模型在 CPU 上
 criterion = nn.MSELoss()
 optimizer = optim.AdamW(model.parameters(), lr=0.001)
-
 
 
 ### 定义公用模型训练和测试过程
@@ -70,6 +71,7 @@ def train_model(model, train_loader, criterion, optimizer, epochs=100):
         # print(f'Epoch {epoch + 1}/{epochs}, Loss: {epoch_loss:.4f}')
     return model
 
+
 def evaluate_model(model, test_loader, criterion):
     model.eval()
     test_loss = 0.0
@@ -81,25 +83,22 @@ def evaluate_model(model, test_loader, criterion):
             test_loss += loss.item() * inputs.size(0)
             # 调用R2评估测试集
             r2 = r2_score(targets, outputs)
-            r2 = round(r2,4)
+            r2 = round(r2, 4)
 
     test_loss /= len(test_loader.dataset)
     # print(f"Test Loss: {test_loss:.4f}")
     print(f"r2_score:{r2}")
 
-
-    return test_loss,r2
-
-
-
+    return test_loss, r2
 
 
 ### ====================================================主动学习过程
 indices = list(range(len(X_train_full)))
 random.shuffle(indices)
 # 标签数据和无标签数据的索引号
-labeled_set = indices[:ADDENDUM_init] # 初始数据集长度
+labeled_set = indices[:ADDENDUM_init]  # 初始数据集长度
 unlabeled_set = indices[ADDENDUM_init:]
+
 
 # # 把整个训练集划分为标签子集和非标签子集
 # labeled_subset = Subset(train_full_dataset, labeled_set)
@@ -120,12 +119,10 @@ def split_features_labels(dataset, indices):
     labels_tensor = torch.tensor(labels_list)
 
     return subset, features_tensor, labels_tensor
+
+
 labeled_subset, X_initial, y_initial = split_features_labels(train_full_dataset, labeled_set)
 unlabeled_subset, X_unlabeled, y_unlabeled = split_features_labels(train_full_dataset, unlabeled_set)
-
-
-
-
 
 
 
@@ -133,7 +130,6 @@ unlabeled_subset, X_unlabeled, y_unlabeled = split_features_labels(train_full_da
 # 建立标签子集的训练集
 # train_dataset = TensorDataset(X_initial, y_initial)
 train_loader = DataLoader(labeled_subset, batch_size=BATCH, shuffle=True)
-
 
 test_losses = []
 test_R2s = []
@@ -145,8 +141,8 @@ for cycle in range(num_cycles):
     # 训练模型
     model = train_model(model, train_loader, criterion, optimizer, epochs)
     # 测试模型
-    test_loss = evaluate_model(model, test_loader, criterion)[0]
-    test_R2 = evaluate_model(model, test_loader, criterion)[1]
+    test_loss, test_R2 = evaluate_model(model, test_loader, criterion)
+
     test_losses.append(test_loss)
     test_R2s.append(test_R2)
     """
@@ -169,7 +165,7 @@ for cycle in range(num_cycles):
         """
         # [0.7905, 0.8201, 0.8822, 0.8908, 0.9135, 0.9193, 0.9129, 0.9091, 0.9242, 0.8542, 0.8471, 0.9042, 0.9006, 0.9121]
     if strategy == "LL4AL":
-        train_loader, unlabeled_subset = LL4AL(train_full_dataset, train_loader, labeled_set, unlabeled_set, unlabeled_subset, cycle)
+        labeled_subset, unlabeled_subset, labeled_set, unlabeled_set = LL4AL(train_full_dataset, labeled_set, unlabeled_set, BATCH)
         """
         train_full_dataset:完整训练集
         train_loader:初始训练加载器
@@ -179,6 +175,8 @@ for cycle in range(num_cycles):
         cycle:
         """
         # [0.7672, 0.8395, 0.8732, 0.88, 0.8699, 0.8397, 0.8413, 0.8357, 0.8372, 0.8435, 0.8536, 0.8751, 0.8974, 0.9061]
+        # [0.7672, 0.7411, 0.7061, 0.7707, 0.6642, 0.7191, 0.8511, 0.8372, 0.8936, 0.8973, 0.8771, 0.9368, 0.9316, 0.9551]
+        train_loader = DataLoader(labeled_subset, batch_size=BATCH, shuffle=True)
     if strategy == "BMDAL":
         train_loader, X_initial, y_initial, X_unlabeled, y_unlabeled = BMDAL(X_initial, y_initial, X_unlabeled, y_unlabeled, addendum_size, model, BATCH)
 
@@ -197,16 +195,8 @@ for cycle in range(num_cycles):
 
 
 
-
-
-
-
-
-
-
-
-
-
+    if strategy == "GSx":
+        pass
 #MC dropout
 #预期模型最大变化
 #BMDAL
