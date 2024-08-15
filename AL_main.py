@@ -15,12 +15,13 @@ from sklearn.metrics import r2_score
 
 # 导入自定义变量和函数
 from data_process import (X_train_full, X_test, y_train_full, y_test,
-                          train_full_dataset, test_dataset, test_loader)
+                          train_full_dataset, test_dataset, test_loader, data)
 from pub_nnModel import ConcreteNet
 from RS.RS_strat import RS
 from LL4AL.LL_main_pro import LL4AL
 from bmdal_reg.BMDAL_strat import BMDAL
 from MC_Dropout.MCD_strat import MCD
+from EGAL import EGAL
 
 
 def set_seed(seed):
@@ -35,7 +36,7 @@ SEED = 50
 set_seed(SEED)
 
 # ==========参数==========
-strategy = "LL4AL"
+strategy = "EGAL"
 
 ADDENDUM_init = 100
 BATCH = 32
@@ -133,7 +134,22 @@ train_loader = DataLoader(labeled_subset, batch_size=BATCH, shuffle=True)
 
 test_losses = []
 test_R2s = []
+###################################################8.15修改的###################################################
+# 将训练集和测试集转化为DataFrame，以便获取潜在索引
+X_train_full_df = pd.DataFrame(X_train_full, columns=data.columns[:-1])
+X_test_df = pd.DataFrame(X_test, columns=data.columns[:-1])
 
+# 获取训练集和测试集的潜在索引
+train_indices = X_train_full_df.index.tolist()
+test_indices = X_test_df.index.tolist()
+
+# 随机选择 ADDENDUM_init 个索引作为初始标签集
+
+labeled_indices = np.random.choice(train_indices, size=ADDENDUM_init, replace=False).tolist()
+
+# 剩余的训练集作为未标记数据集
+unlabeled_indices = list(set(train_indices) - set(labeled_indices))
+###################################################8.15修改的###################################################
 for cycle in range(num_cycles):
 
     print(f"Active Learning Cycle {cycle + 1}/{num_cycles}")
@@ -197,6 +213,27 @@ for cycle in range(num_cycles):
 
     if strategy == "GSx":
         pass
+
+    if strategy== "EGAL":
+
+        # 初始化EGAL采样器并进行采样
+        sampler = EGAL(addendum_size=50, w=0.25)  # addendum_size 和 w 需要根据你的需求设定
+        top_samples_indices = sampler.sample(X_train_full, labeled_indices, unlabeled_indices)
+
+        # 更新 labeled_indices 和 unlabeled_indices
+        labeled_indices.extend(top_samples_indices)
+        unlabeled_indices = list(set(unlabeled_indices) - set(top_samples_indices))
+
+        X_train_full_tensor = torch.tensor(X_train_full, dtype=torch.float32)
+        y_train_full_tensor = torch.tensor(y_train_full, dtype=torch.float32)
+
+        train_full_dataset = TensorDataset(X_train_full_tensor, y_train_full_tensor)
+
+        labeled_subset = Subset(train_full_dataset, labeled_indices)
+
+        # 创建 DataLoader
+        train_loader = DataLoader(labeled_subset, batch_size=32, shuffle=True)
+        # [0.7672, 0.8275, 0.8218, 0.8464, 0.8817, 0.9029, 0.9193, 0.816, 0.8702, 0.8617, 0.8879, 0.9003, 0.8849, 0.9]
 #MC dropout
 #预期模型最大变化
 #BMDAL
