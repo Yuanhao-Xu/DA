@@ -217,7 +217,7 @@ for cycle in range(num_cycles):
     if strategy== "EGAL":
 
         # 初始化EGAL采样器并进行采样
-        sampler = EGAL(addendum_size=50, w=0.25)  # addendum_size 和 w 需要根据你的需求设定
+        sampler = EGAL(addendum_size=50, w=0.25)
         top_samples_indices = sampler.sample(X_train_full, labeled_indices, unlabeled_indices)
 
         # 更新 labeled_indices 和 unlabeled_indices
