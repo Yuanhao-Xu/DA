@@ -16,13 +16,17 @@ from sklearn.metrics import r2_score
 # 导入自定义变量和函数
 from data_process import (X_train_full, X_test, y_train_full, y_test,
                           train_full_dataset, test_dataset, test_loader, data)
-from pub_nnModel import ConcreteNet
+from benchmark_nn_model import BenchmarkModel, ModelTrainer
 from RS.RS_strat import RS
 from LL4AL.LL_main_pro import LL4AL
 from bmdal_reg.BMDAL_strat import BMDAL
 from MC_Dropout.MCD_strat import MCD
 from EGAL import EGAL
+from BayesianAL import BayesianAL
+import pyro
 
+# 设置 Pyro 的随机种子
+pyro.set_rng_seed(42)
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -36,7 +40,7 @@ SEED = 50
 set_seed(SEED)
 
 # ==========参数==========
-strategy = "EGAL"
+strategy = "RS"
 
 ADDENDUM_init = 100
 BATCH = 32
@@ -45,52 +49,18 @@ num_cycles = 14
 epochs = 500
 addendum_size = 50
 
+NN_input = 8
+NN_output = 1
+
 # ==========深度学习参数==========
 
 device = torch.device('cpu')
-model = ConcreteNet().to(device)  # 确保模型在 CPU 上
-criterion = nn.MSELoss()
-optimizer = optim.AdamW(model.parameters(), lr=0.001)
+model = BenchmarkModel(input_dim=NN_input, output_dim=NN_output)
+trainer = ModelTrainer(model, device=device, lr=0.001)
 
 
 ### 定义公用模型训练和测试过程
 
-def train_model(model, train_loader, criterion, optimizer, epochs=100):
-    model.train()
-    for epoch in range(epochs):
-        epoch_loss = 0.0
-        for inputs, targets in train_loader:
-            inputs, targets = inputs.to(device), targets.to(device)  # 确保在正确设备上
-            optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, targets)
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.item() * inputs.size(0)
-
-        epoch_loss /= len(train_loader.dataset)
-        # print(f'Epoch {epoch + 1}/{epochs}, Loss: {epoch_loss:.4f}')
-    return model
-
-
-def evaluate_model(model, test_loader, criterion):
-    model.eval()
-    test_loss = 0.0
-    with torch.no_grad():
-        for inputs, targets in test_loader:
-            inputs, targets = inputs.to(device), targets.to(device)  # 确保在正确设备上
-            outputs = model(inputs)
-            loss = criterion(outputs, targets)
-            test_loss += loss.item() * inputs.size(0)
-            # 调用R2评估测试集
-            r2 = r2_score(targets, outputs)
-            r2 = round(r2, 4)
-
-    test_loss /= len(test_loader.dataset)
-    # print(f"Test Loss: {test_loss:.4f}")
-    print(f"r2_score:{r2}")
-
-    return test_loss, r2
 
 
 ### ====================================================主动学习过程
@@ -139,7 +109,7 @@ test_R2s = []
 X_train_full_df = pd.DataFrame(X_train_full, columns=data.columns[:-1])
 X_test_df = pd.DataFrame(X_test, columns=data.columns[:-1])
 
-# 获取训练集和测试集的潜在索引
+# 获取训练集和测试集的潜在索引_
 train_indices = X_train_full_df.index.tolist()
 test_indices = X_test_df.index.tolist()
 
@@ -149,15 +119,18 @@ labeled_indices = np.random.choice(train_indices, size=ADDENDUM_init, replace=Fa
 
 # 剩余的训练集作为未标记数据集
 unlabeled_indices = list(set(train_indices) - set(labeled_indices))
+
+
+
 ###################################################8.15修改的###################################################
 for cycle in range(num_cycles):
 
     print(f"Active Learning Cycle {cycle + 1}/{num_cycles}")
 
     # 训练模型
-    model = train_model(model, train_loader, criterion, optimizer, epochs)
+    model = trainer.train_model(train_loader, epochs)
     # 测试模型
-    test_loss, test_R2 = evaluate_model(model, test_loader, criterion)
+    test_loss, test_R2 = trainer.evaluate_model(test_loader)
 
     test_losses.append(test_loss)
     test_R2s.append(test_R2)
@@ -179,7 +152,7 @@ for cycle in range(num_cycles):
         BATCH:略
         cycle:循环数
         """
-        # [0.7905, 0.8201, 0.8822, 0.8908, 0.9135, 0.9193, 0.9129, 0.9091, 0.9242, 0.8542, 0.8471, 0.9042, 0.9006, 0.9121]
+        # [0.7672, 0.7715, 0.6956, 0.7021, 0.5967, 0.6479, 0.7289, 0.7374, 0.695, 0.8348, 0.7528, 0.7751, 0.8619, 0.9113]
     if strategy == "LL4AL":
         labeled_subset, unlabeled_subset, labeled_set, unlabeled_set = LL4AL(train_full_dataset, labeled_set, unlabeled_set, BATCH)
         """
@@ -234,7 +207,64 @@ for cycle in range(num_cycles):
         # 创建 DataLoader
         train_loader = DataLoader(labeled_subset, batch_size=32, shuffle=True)
         # [0.7672, 0.8275, 0.8218, 0.8464, 0.8817, 0.9029, 0.9193, 0.816, 0.8702, 0.8617, 0.8879, 0.9003, 0.8849, 0.9]
+
+    if strategy == "BayesianAL":
+        # 实例化贝叶斯主动学习类
+        bal = BayesianAL(input_dim=NN_input, output_dim=NN_output, hid_dims=[64, 32], prior_scale=5.0)
+        # 转换数据为Tensor
+        X_train_labeled, y_train_labeled, X_train_unlabeled = bal.convert_to_tensor(X_train_full, y_train_full, labeled_indices, unlabeled_indices)
+        """
+        X_train_full: np.ndarray
+        完整的训练数据输入特征，形状为 [样本数, 特征数]，包含所有训练样本的特征值。
+
+        y_train_full: np.ndarray
+        完整的训练数据目标变量，形状为 [样本数, 1]，包含所有训练样本的目标值。
+
+        labeled_indices: list[int]
+        已标注样本在原始训练数据集中的绝对索引，用于标识哪些样本已被标注。
+
+        unlabeled_indices: list[int]
+        未标注样本在原始训练数据集中的绝对索引，用于标识哪些样本尚未被标注。
+        """
+
+        # 训练模型
+        bal.train(X_train_labeled, y_train_labeled)
+        # 选择最不确定的样本
+        selected_indices = bal.select_most_uncertain(X_train_unlabeled, unlabeled_indices, addendum_size)
+        """
+        selected_indices: list[int]
+        包含在未标注数据集中，经过不确定性排序后选择的最不确定样本在原始训练数据集中的绝对索引。
+        """
+        # 更新 labeled_indices 和 unlabeled_indices
+        labeled_indices.extend(selected_indices)
+        for idx in selected_indices:
+            unlabeled_indices.remove(idx)
+
+        # 创建包含更新后的已标注样本子集
+        X_train_full_tensor = torch.tensor(X_train_full, dtype=torch.float32)
+        y_train_full_tensor = torch.tensor(y_train_full, dtype=torch.float32)
+        train_full_dataset = TensorDataset(X_train_full_tensor, y_train_full_tensor)
+        labeled_subset = Subset(train_full_dataset, labeled_indices)
+        # 创建 DataLoader
+        train_loader = DataLoader(labeled_subset, batch_size=32, shuffle=True)
+        # [0.7672, 0.7934, 0.8716, 0.8794, 0.8361, 0.748, 0.7656, 0.7722, 0.8952, 0.9195, 0.9086, 0.8975, 0.9424, 0.931]
+
+
+
+
+
+
+
+
+
 #MC dropout
 #预期模型最大变化
 #BMDAL
 #L1 L2
+
+# GS [0.7672, 0.8275, 0.8218, 0.8464, 0.8817, 0.9029, 0.9193, 0.816, 0.8702, 0.8617, 0.8879, 0.9003, 0.8849, 0.9]
+# LL4AL [0.7672, 0.7411, 0.7061, 0.7707, 0.6642, 0.7191, 0.8511, 0.8372, 0.8936, 0.8973, 0.8771, 0.9368, 0.9316, 0.9551]
+# BMDAL [0.7672, 0.7089, 0.8243, 0.9165, 0.9431, 0.8835, 0.9038, 0.9607, 0.963, 0.9538, 0.9722, 0.9911, 0.9728, 0.9664]
+# MCD [0.7672, 0.6473, 0.7375, 0.5843, 0.723, 0.7502, 0.896, 0.9066, 0.9505, 0.955, 0.9462, 0.9573, 0.9631, 0.9582]
+# EGAL [0.7672, 0.8275, 0.8218, 0.8464, 0.8817, 0.9029, 0.9193, 0.816, 0.8702, 0.8617, 0.8879, 0.9003, 0.8849, 0.9]
+# BayesianAL [0.7672, 0.7934, 0.8716, 0.8794, 0.8361, 0.748, 0.7656, 0.7722, 0.8952, 0.9195, 0.9086, 0.8975, 0.9424, 0.931]
