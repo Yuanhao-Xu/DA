@@ -169,7 +169,7 @@ for cycle in range(num_cycles):
         """
         # [0.7905, 0.8201, 0.8822, 0.8908, 0.9135, 0.9193, 0.9129, 0.9091, 0.9242, 0.8542, 0.8471, 0.9042, 0.9006, 0.9121]
     if strategy == "LL4AL":
-        train_loader, unlabeled_subset = LL4AL(train_full_dataset, train_loader, labeled_set, unlabeled_set, unlabeled_subset, cycle)
+        train_loader, unlabeled_subset = LL4AL(train_full_dataset, train_loader, labeled_set, unlabeled_set, unlabeled_subset)
         """
         train_full_dataset:完整训练集
         train_loader:初始训练加载器
