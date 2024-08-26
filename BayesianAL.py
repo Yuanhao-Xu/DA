@@ -69,13 +69,15 @@ class BayesianAL:
         self.optimizer = pyro.optim.Adam({"lr": 0.01})
         self.svi = pyro.infer.SVI(self.bnn, self.guide, self.optimizer, loss=pyro.infer.Trace_ELBO())
 
-    def convert_to_tensor(self, X_train_full, y_train_full, labeled_indices, unlabeled_indices):
+    def convert_to_tensor(self, X_train_full_df, y_train_full_df, labeled_indices, unlabeled_indices):
         """
-        将训练数据转换为PyTorch的Tensor
+        将DataFrame格式的训练数据转换为PyTorch的Tensor
         """
-        X_train_labeled = torch.tensor(X_train_full[labeled_indices], dtype=torch.float32)
-        y_train_labeled = torch.tensor(y_train_full[labeled_indices], dtype=torch.float32)
-        X_train_unlabeled = torch.tensor(X_train_full[unlabeled_indices], dtype=torch.float32)
+        # 使用.iloc 根据索引从 DataFrame 中选择对应的数据，并将其转换为 NumPy 数组，然后转换为 PyTorch 张量
+        X_train_labeled = torch.tensor(X_train_full_df.iloc[labeled_indices].values, dtype=torch.float32)
+        y_train_labeled = torch.tensor(y_train_full_df.iloc[labeled_indices].values, dtype=torch.float32)
+        X_train_unlabeled = torch.tensor(X_train_full_df.iloc[unlabeled_indices].values, dtype=torch.float32)
+
         return X_train_labeled, y_train_labeled, X_train_unlabeled
 
     def train(self, X_train, y_train, num_iterations=1500):

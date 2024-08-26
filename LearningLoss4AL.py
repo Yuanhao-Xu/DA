@@ -35,7 +35,7 @@ class LearningLoss:
         target = target.detach()
         # 这个损失函数说明损失预测模型的实际目的是得到对应数据的损失值的大小关系而不是确定的损失值
         one = 2 * torch.sign(torch.clamp(target, min=0)) - 1  # 1 operation which is defined by the authors
-
+        loss = None
         if reduction == 'mean':
             loss = torch.sum(torch.clamp(margin - one * input, min=0))
             loss = loss / input.size(0)  # Note that the size of input is already halved

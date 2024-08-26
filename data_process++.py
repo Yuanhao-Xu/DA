@@ -34,12 +34,6 @@ class DataProcessor:
             self.X, self.y, test_size=0.2, random_state=42
         )
 
-        # 在划分训练集和测试集后，重置它们的索引，因为实际上后续抽取标记/非标记数据集仅是在训练集上操作的
-        self.X_train_full = self.X_train_full.reset_index(drop=True)
-        self.X_test = self.X_test.reset_index(drop=True)
-        self.y_train_full = self.y_train_full.reset_index(drop=True)
-        self.y_test = self.y_test.reset_index(drop=True)
-
         # 获取训练集的索引
         self.train_indices = self.X_train_full.index
 
@@ -84,26 +78,8 @@ class DataProcessor:
     def get_unlabeled_indices(self):
         return self.unlabeled_indices
 
-    def get_train_full_dataset(self):
-        return self.train_full_dataset
 
-    def get_X_train_labeled_df(self):
-        return self.X_train_labeled_df
 
-    def get_y_train_labeled_df(self):
-        return self.y_train_labeled_df
-
-    def get_X_train_unlabeled_df(self):
-        return self.X_train_unlabeled_df
-
-    def get_y_train_unlabeled_df(self):
-        return self.y_train_unlabeled_df
-
-    def get_X_train_full_df(self):
-        return self.X_train_full
-
-    def get_y_train_full_df(self):
-        return self.y_train_full
 
 data_processor = DataProcessor(file_path='Dataset/UCI_Concrete_Data.xls', addendum_init=100, batch_size=32)
 # 训练器
@@ -112,17 +88,4 @@ test_loader = data_processor.get_test_loader()
 # 标签和非标签索引
 labeled_indices = data_processor.get_labeled_indices()
 unlabeled_indices = data_processor.get_unlabeled_indices()
-# 完整训练集
-train_full_dataset = data_processor.get_train_full_dataset()
-# 分别获取标记/未标记数据集的特征/标签
-X_train_labeled_df = data_processor.get_X_train_labeled_df()
-y_train_labeled_df = data_processor.get_y_train_labeled_df()
-
-X_train_unlabeled_df = data_processor.get_X_train_unlabeled_df()
-y_train_unlabeled_df = data_processor.get_y_train_unlabeled_df()
-
-# 获取完整训练集的特征和标签
-X_train_full_df = data_processor.get_X_train_full_df()
-y_train_full_df = data_processor.get_y_train_full_df()
-
 

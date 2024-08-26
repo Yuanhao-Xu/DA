@@ -44,7 +44,7 @@ class ModelTrainer:
                 epoch_loss += loss.item() * inputs.size(0)
 
             epoch_loss /= len(train_loader.dataset)
-            print(f'Epoch {epoch + 1}/{epochs}, Loss: {epoch_loss:.4f}')
+            # print(f'Epoch {epoch + 1}/{epochs}, Loss: {epoch_loss:.4f}')
         return self.model
 
     def evaluate_model(self, test_loader):
