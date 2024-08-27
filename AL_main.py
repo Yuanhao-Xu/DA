@@ -19,8 +19,8 @@ from data_process import (train_loader,
                           X_train_full_df,
                           y_train_full_df)
 from benchmark_nn_model import BenchmarkModel, ModelTrainer
-from RS.RS_strat import RS
-from Diplomarbeit.DA.alstr_LL4AL import LL4AL
+from alstr_RS import RS
+from alstr_LL4AL import LL4AL
 from bmdal_reg.alstr_LCMD import LCMD
 from alstr_MCD import MC_Dropout
 from alstr_EGAL import EGAL
@@ -42,7 +42,7 @@ SEED = 50
 set_seed(SEED)
 
 # 基准模型参数
-strategy = "LCMD"
+strategy = "RS"
 
 addendum_init = 100
 BATCH = 32
