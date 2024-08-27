@@ -42,7 +42,7 @@ SEED = 50
 set_seed(SEED)
 
 # 基准模型参数
-strategy = "RS"
+strategy = "EGAL"
 
 addendum_init = 100
 BATCH = 32
@@ -189,25 +189,27 @@ for cycle in range(num_cycles):
         pass
 
     if strategy== "EGAL":
-
-        # 初始化EGAL采样器并进行采样
-        sampler = EGAL(addendum_size=50, w=0.25)
-        top_samples_indices = sampler.sample(X_train_full_df, labeled_indices, unlabeled_indices)
-
-        # 更新 labeled_indices 和 unlabeled_indices
-        labeled_indices.extend(top_samples_indices)
-        unlabeled_indices = list(set(unlabeled_indices) - set(top_samples_indices))
-
-        X_train_full_tensor = torch.tensor(X_train_full_df, dtype=torch.float32)
-        y_train_full_tensor = torch.tensor(y_train_full_df, dtype=torch.float32)
-
-        train_full_dataset = TensorDataset(X_train_full_tensor, y_train_full_tensor)
-
+        al_EGAL = EGAL(X_train_labeled_df,
+                    X_train_unlabeled_df,
+                    X_train_full_df,
+                    unlabeled_indices,
+                    labeled_indices,
+                    addendum_size)
+        selected_indices = al_EGAL.query()
+        labeled_indices.extend(selected_indices)
+        for idx in selected_indices:
+            unlabeled_indices.remove(idx)
+        # 创建包含更新后的已标注样本子集
         labeled_subset = Subset(train_full_dataset, labeled_indices)
-
         # 创建 DataLoader
         train_loader = DataLoader(labeled_subset, batch_size=32, shuffle=True)
-        # [0.7672, 0.8275, 0.8218, 0.8464, 0.8817, 0.9029, 0.9193, 0.816, 0.8702, 0.8617, 0.8879, 0.9003, 0.8849, 0.9]
+        # 索引更新后，传入参数也要更新
+        X_train_labeled_df = X_train_full_df.loc[labeled_indices]
+        y_train_labeled_df = y_train_full_df.loc[labeled_indices]
+        X_train_unlabeled_df = X_train_full_df.loc[unlabeled_indices]
+        y_train_unlabeled_df = y_train_full_df.loc[unlabeled_indices]
+        # [0.6266, 0.9119, 0.9055, 0.8543, 0.8638, 0.9228, 0.9405, 0.9475, 0.8938, 0.8818, 0.8233, 0.8395, 0.8921, 0.8966]
+
 
     if strategy == "BayesianAL":
         # 实例化贝叶斯主动学习类

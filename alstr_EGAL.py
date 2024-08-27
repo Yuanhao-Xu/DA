@@ -1,127 +1,125 @@
 # CreatTime 2024/8/15
 
-import pandas as pd
-import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import pandas as pd
 
 
 class EGAL:
-    def __init__(self, addendum_size=50, w=0.25):
-
+    def __init__(self, X_train_labeled_df, X_train_unlabeled_df, X_train_full_df, unlabeled_indices, labeled_indices,
+                 addendum_size):
+        self.X_train_labeled_df = X_train_labeled_df
+        self.X_train_unlabeled_df = X_train_unlabeled_df
+        self.X_train_full_df = X_train_full_df
+        self.unlabeled_indices = unlabeled_indices
+        self.labeled_indices = labeled_indices
         self.addendum_size = addendum_size
-        self.w = w
-        self.alpha = None
+        self.b_factor = 0.1
         self.beta = None
 
-    def calculate_alpha(self, similarity_matrix):
+    def calculate_similarity_matrix(self):
+        # 计算整个训练集的相似度矩阵
+        train_similarity_matrix = cosine_similarity(self.X_train_full_df)
+        return train_similarity_matrix
 
-        # 提取相似度矩阵的非对角元素
-        n = similarity_matrix.shape[0]
-        non_diag_elements = similarity_matrix[np.triu_indices(n, k=1)]
+    def calculate_alpha_beta(self):
+        # 计算相似度矩阵中的非对角元素
+        train_similarity_matrix = self.calculate_similarity_matrix()
+        similarity_values = train_similarity_matrix[np.triu_indices_from(train_similarity_matrix, k=1)]
 
-        mu = np.mean(non_diag_elements)
-        delta = np.std(non_diag_elements)
+        # 计算平均相似度 (mu) 和标准差 (delta)
+        mu = np.mean(similarity_values)
+        delta = np.std(similarity_values)
 
-        # 论文中采用的计算公式 alpha: alpha = mu - 0.5 * delta
+        # 计算 alpha
         alpha = mu - 0.5 * delta
 
+        # 将 beta 设置为与 alpha 相同的初始值
+        self.beta = alpha
+        # print(f"Alpha (α): {alpha}")
+        # print(f"Initial Beta (β): {self.beta}")
         return alpha
 
-    def update_beta(self, similarity_matrix, unlabeled_indices, labeled_indices):
+    def update_beta(self, unlabeled_to_labeled_similarity_matrix):
+        # 计算未标记样本与已标记样本的最大相似度
+        max_similarities = np.max(unlabeled_to_labeled_similarity_matrix, axis=1)
 
-        nearest_similarities = [np.max(similarity_matrix[index, labeled_indices]) for index in unlabeled_indices]
-        sorted_similarities = np.sort(nearest_similarities)
+        # 对这些相似度进行排序
+        sorted_similarities = np.sort(max_similarities)
 
-        # 初始取前25%分位数
-        increment_step = 0.25
-        current_step = increment_step
-        new_beta = None
+        # 计算新的 beta 值
+        index = int(np.floor(self.b_factor * len(sorted_similarities)))
+        self.beta = sorted_similarities[index]
+        return self.beta
 
-        while current_step <= 1.0:
-            split_index = int(current_step * len(sorted_similarities))
-            S1 = sorted_similarities[:split_index]
+    def select_candidates(self, alpha):
+        # 计算未标记数据集与已标记数据集之间的余弦相似度矩阵
+        unlabeled_to_labeled_similarity_matrix = cosine_similarity(self.X_train_unlabeled_df, self.X_train_labeled_df)
 
-            # 如果S1的长度小于addendum_size，取更大范围的分位数
-            if len(S1) < self.addendum_size:
-                current_step += increment_step
-            else:
-                new_beta = np.max(S1)
-                break
+        # 找到每个未标记样本与其最近的已标记样本之间的最大相似度
+        max_similarities = np.max(unlabeled_to_labeled_similarity_matrix, axis=1)
 
-        # 如果无法在循环内找到合适的分位数，直接取sorted_similarities的最大值
-        if new_beta is None:
-            new_beta = np.max(sorted_similarities)
+        # 根据初始 beta 的值筛选候选集
+        candidate_indices = [idx for idx, similarity in zip(self.unlabeled_indices, max_similarities) if
+                             similarity <= self.beta]
 
-        return new_beta
+        # 确保候选集的大小不少于 addendum_size
+        while len(candidate_indices) < self.addendum_size:
+            self.b_factor = min(1.0, self.b_factor + 0.1)  # 每次增加 0.1 来扩大候选集
+            self.beta = self.update_beta(unlabeled_to_labeled_similarity_matrix)
+            candidate_indices = [idx for idx, similarity in zip(self.unlabeled_indices, max_similarities) if
+                                 similarity <= self.beta]
 
-    def calculate_density(self, index, similarity_matrix):
+        # print("Candidate Set Indices:")
+        # print(candidate_indices)
+        return candidate_indices
 
-        neighbors = similarity_matrix[index] >= self.alpha
-        density = np.sum(similarity_matrix[index, neighbors])
-        return density
+    def calculate_density(self, candidate_indices, alpha):
+        candidate_density_scores = []
+        for candidate_idx in candidate_indices:
+            # 获取候选样本与所有训练集样本的相似度
+            similarities = cosine_similarity([self.X_train_unlabeled_df.loc[candidate_idx]],
+                                             self.X_train_full_df).flatten()
+            # 找到满足 sim(x_i, x_r) >= alpha 的邻域 N_i
+            neighborhood = similarities[similarities >= alpha]
+            # 计算密度
+            density = np.sum(neighborhood)
+            candidate_density_scores.append(density)
+        return candidate_density_scores
 
-    def calculate_diversity(self, index, similarity_matrix, labeled_indices):
+    def calculate_diversity(self, candidate_indices):
+        candidate_diversity_scores = []
+        for candidate_idx in candidate_indices:
+            # 获取候选样本与已标记样本集的相似度
+            similarities_to_labeled = cosine_similarity(
+                [self.X_train_unlabeled_df.loc[candidate_idx]], self.X_train_labeled_df
+            ).flatten()
+            # 计算多样性（相似度的倒数）
+            diversity = 1 / np.max(similarities_to_labeled)
+            candidate_diversity_scores.append(diversity)
+        return candidate_diversity_scores
 
-        nearest_labeled_similarity = np.max(similarity_matrix[index, labeled_indices])
-        diversity = 1.0 / nearest_labeled_similarity
-        return diversity
+    def combine_density_and_diversity(self, density_scores, diversity_scores, w=0.25):
+        # 结合密度和多样性得分
+        combined_scores = w * np.array(density_scores) + (1 - w) * np.array(diversity_scores)
+        return combined_scores
 
-    def sample(self, X, labeled_indices, unlabeled_indices):
+    def query(self):
+        # Step 1: 计算 alpha 和 beta
+        alpha = self.calculate_alpha_beta()
 
-        # 计算相似度矩阵
-        similarity_matrix = cosine_similarity(X)
+        # Step 2: 选择候选集
+        candidate_indices = self.select_candidates(alpha)
 
-        # 根据相似度矩阵计算 alpha 和 beta
-        self.alpha = self.calculate_alpha(similarity_matrix)
-        self.beta = self.alpha  # 将 beta 初始值设置为 alpha
+        # Step 3: 计算密度和多样性
+        density_scores = self.calculate_density(candidate_indices, alpha)
+        diversity_scores = self.calculate_diversity(candidate_indices)
 
-        candidate_set = []
+        # Step 4: 结合密度和多样性
+        combined_scores = self.combine_density_and_diversity(density_scores, diversity_scores, w=0.25)
 
-        # 确保候选样本集中的样本数至少为 addendum_size
-        while len(candidate_set) < self.addendum_size:
-            candidate_set.clear()  # 清空候选集
-            for index in unlabeled_indices:
-                nearest_labeled_similarity = np.max(similarity_matrix[index, labeled_indices])
-                if nearest_labeled_similarity <= self.beta:
-                    candidate_set.append(index)
-
-            # 如果候选样本集的数量少于 addendum_size，更新 beta
-            if len(candidate_set) < self.addendum_size:
-                self.beta = self.update_beta(similarity_matrix, unlabeled_indices, labeled_indices)
-
-        candidate_set = np.array(candidate_set)
-
-        densities = [self.calculate_density(index, similarity_matrix) for index in candidate_set]
-        diversities = [self.calculate_diversity(index, similarity_matrix, labeled_indices) for index in candidate_set]
-
-        combined_scores = self.w * np.array(densities) + (1 - self.w) * np.array(diversities)
-
-        ranked_candidates = [x for _, x in sorted(zip(combined_scores, candidate_set), reverse=True)]
-
-        top_samples_indices = ranked_candidates[:self.addendum_size]
-
-        return top_samples_indices
-
-    def get_original_indices(self, df, top_samples_indices):
-
-        return df.index[top_samples_indices]
-
-
-
-if __name__ == "__main__":
-    file_path = 'Dataset/UCI_Concrete_Data.xls'
-    df = pd.read_excel(file_path)
-
-    X = df.drop(columns=['Concrete compressive strength(MPa, megapascals) '])
-    y = df['Concrete compressive strength(MPa, megapascals) ']
-
-    np.random.seed(42)
-    labeled_indices = np.random.choice(len(X), size=100, replace=False)
-    unlabeled_indices = np.array([i for i in range(len(X)) if i not in labeled_indices])
-
-    sampler = EGAL(addendum_size=50, w=0.25)
-    top_samples_indices = sampler.sample(X, labeled_indices, unlabeled_indices)
-    original_indices = sampler.get_original_indices(df, top_samples_indices)
-
-
-
+        # Step 5: 选择得分最高的样本
+        top_indices = np.argsort(combined_scores)[-self.addendum_size:]  # 获取分数最高的 addendum_size 个样本索引
+        selected_indices = [candidate_indices[i] for i in top_indices]
+        # print(f"Selected indices based on combined score: {selected_indices}")
+        return selected_indices
