@@ -113,8 +113,8 @@ class IterativeSelectionMethod(SelectionMethod):
             for i in range(len(self.train_features)):
                 self.add(len(self.pool_features)+i)
                 self.n_added += 1
-                if (i+1) % 256 == 0 and self.verbosity >= 1:
-                    print(f'Added {i+1} train samples to selection', flush=True)
+                # if (i+1) % 256 == 0 and self.verbosity >= 1:
+                #     print(f'Added {i+1} train samples to selection', flush=True)
 
         for i in range(batch_size):
             next_idx = self.get_next_idx()
