@@ -42,7 +42,7 @@ SEED = 50
 set_seed(SEED)
 
 # 基准模型参数
-strategy = "EGAL"
+strategy = "BayesianAL"
 
 addendum_init = 100
 BATCH = 32
@@ -189,12 +189,7 @@ for cycle in range(num_cycles):
         pass
 
     if strategy== "EGAL":
-        al_EGAL = EGAL(X_train_labeled_df,
-                    X_train_unlabeled_df,
-                    X_train_full_df,
-                    unlabeled_indices,
-                    labeled_indices,
-                    addendum_size)
+        al_EGAL = EGAL(X_train_labeled_df, X_train_unlabeled_df, X_train_full_df, addendum_size)
         selected_indices = al_EGAL.query()
         labeled_indices.extend(selected_indices)
         for idx in selected_indices:
@@ -212,29 +207,22 @@ for cycle in range(num_cycles):
 
 
     if strategy == "BayesianAL":
-        # 实例化贝叶斯主动学习类
-        bal = BayesianAL(input_dim=NN_input, output_dim=NN_output, hid_dims=[64, 32], prior_scale=5.0)
-        # 转换数据为Tensor
-        X_train_labeled_tensor, y_train_labeled_tensor, X_train_unlabeled_tensor = bal.convert_to_tensor(X_train_full_df, y_train_full_df, labeled_indices, unlabeled_indices)
+        al_BayesianAL = BayesianAL(X_train_labeled_df, y_train_labeled_df, X_train_unlabeled_df, y_train_unlabeled_df)
+        selected_indices = al_BayesianAL.query()
 
-        # 训练模型
-        bal.train(X_train_labeled_tensor, y_train_labeled_tensor)
-        # 选择最不确定的样本
-        selected_indices = bal.select_most_uncertain(X_train_unlabeled_tensor, unlabeled_indices, addendum_size)
-        """
-        selected_indices: list[int]
-        包含在未标注数据集中，经过不确定性排序后选择的最不确定样本在原始训练数据集中的绝对索引。
-        """
-        # 更新 labeled_indices 和 unlabeled_indices
         labeled_indices.extend(selected_indices)
         for idx in selected_indices:
             unlabeled_indices.remove(idx)
-
         # 创建包含更新后的已标注样本子集
         labeled_subset = Subset(train_full_dataset, labeled_indices)
         # 创建 DataLoader
         train_loader = DataLoader(labeled_subset, batch_size=32, shuffle=True)
-        # [0.7672, 0.7934, 0.8716, 0.8794, 0.8361, 0.748, 0.7656, 0.7722, 0.8952, 0.9195, 0.9086, 0.8975, 0.9424, 0.931]
+        # 索引更新后，传入参数也要更新
+        X_train_labeled_df = X_train_full_df.loc[labeled_indices]
+        y_train_labeled_df = y_train_full_df.loc[labeled_indices]
+        X_train_unlabeled_df = X_train_full_df.loc[unlabeled_indices]
+        y_train_unlabeled_df = y_train_full_df.loc[unlabeled_indices]
+
 
 
 

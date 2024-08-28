@@ -6,16 +6,16 @@ import pandas as pd
 
 
 class EGAL:
-    def __init__(self, X_train_labeled_df, X_train_unlabeled_df, X_train_full_df, unlabeled_indices, labeled_indices,
-                 addendum_size):
+    def __init__(self, X_train_labeled_df, X_train_unlabeled_df, X_train_full_df, addendum_size):
         self.X_train_labeled_df = X_train_labeled_df
         self.X_train_unlabeled_df = X_train_unlabeled_df
         self.X_train_full_df = X_train_full_df
-        self.unlabeled_indices = unlabeled_indices
-        self.labeled_indices = labeled_indices
+        self.unlabeled_indices = X_train_unlabeled_df.index.tolist()
+        self.labeled_indices = X_train_labeled_df.index.tolist()
         self.addendum_size = addendum_size
         self.b_factor = 0.1
         self.beta = None
+
 
     def calculate_similarity_matrix(self):
         # 计算整个训练集的相似度矩阵
