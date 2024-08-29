@@ -1,20 +1,21 @@
-# CreatTime 2024/8/15
-
-from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 class EGAL:
-    def __init__(self, X_train_labeled_df, X_train_unlabeled_df, X_train_full_df, addendum_size):
-        self.X_train_labeled_df = X_train_labeled_df
-        self.X_train_unlabeled_df = X_train_unlabeled_df
-        self.X_train_full_df = X_train_full_df
-        self.unlabeled_indices = X_train_unlabeled_df.index.tolist()
-        self.labeled_indices = X_train_labeled_df.index.tolist()
-        self.addendum_size = addendum_size
-        self.b_factor = 0.1
+    def __init__(self, b_factor=0.1):
+        self.X_train_labeled_df = None
+        self.X_train_unlabeled_df = None
+        self.X_train_full_df = None
+        self.unlabeled_indices = None
+        self.labeled_indices = None
+        self.addendum_size = None
+        self.b_factor = b_factor
         self.beta = None
+
+    def fit(self, X_labeled, y_labeled):
+        pass  # do nothing
 
 
     def calculate_similarity_matrix(self):
@@ -48,7 +49,7 @@ class EGAL:
         sorted_similarities = np.sort(max_similarities)
 
         # 计算新的 beta 值
-        index = min(int(np.floor(self.b_factor * len(sorted_similarities))), len(sorted_similarities)-1)
+        index = int(np.floor(self.b_factor * len(sorted_similarities)))
         self.beta = sorted_similarities[index]
         return self.beta
 
@@ -104,7 +105,13 @@ class EGAL:
         combined_scores = w * np.array(density_scores) + (1 - w) * np.array(diversity_scores)
         return combined_scores
 
-    def query(self):
+    def query(self, X_unlabeled, X_labeled, n_act=1, **kwargs):
+        self.X_train_labeled_df = X_labeled
+        self.X_train_unlabeled_df = X_unlabeled
+        self.X_train_full_df = pd.concat([X_labeled, X_unlabeled])
+        self.unlabeled_indices = X_unlabeled.index.to_list()
+        self.labeled_indices = X_labeled.index.to_list()
+        self.addendum_size = n_act
         # Step 1: 计算 alpha 和 beta
         alpha = self.calculate_alpha_beta()
 

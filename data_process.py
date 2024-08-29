@@ -115,3 +115,8 @@ y_train_unlabeled_df = Dataset_UCI.y_train_unlabeled_df
 # 获取完整训练集的特征和标签
 X_train_full_df = Dataset_UCI.X_train_full
 y_train_full_df = Dataset_UCI.y_train_full
+
+
+# y_train_labeled_tensor = torch.tensor(y_train_labeled_df.values, dtype=torch.float32)
+#
+# print(y_train_labeled_tensor.shape[1])

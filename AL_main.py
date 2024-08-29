@@ -25,6 +25,11 @@ from bmdal_reg.alstr_LCMD import LCMD
 from alstr_MCD import MC_Dropout
 from alstr_EGAL import EGAL
 from alstr_BayesianAL import BayesianAL
+from alstr_GSx import GSx
+from alstr_GSy import GSy
+from alstr_GSi import GSi
+from alstr_GSBAG import GSBAG
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 import pyro
 
 # 设置 Pyro 的随机种子
@@ -42,14 +47,14 @@ SEED = 50
 set_seed(SEED)
 
 # 基准模型参数
-strategy = "BayesianAL"
+strategy = "GSBAG"
 
 addendum_init = 100
 BATCH = 32
 
-num_cycles = 14
+num_cycles = 30
 epochs = 500
-addendum_size = 50
+addendum_size = 20
 
 NN_input = 8
 NN_output = 1
@@ -87,6 +92,10 @@ for cycle in range(num_cycles):
     4.MCD
     5.EGAL
     6.BayesianAL
+    7.GSx
+    8.GSy
+    9.GSi
+    10.GSBAG
     """
 
     if strategy == "RS":
@@ -183,11 +192,6 @@ for cycle in range(num_cycles):
 
         # [0.7672, 0.6473, 0.7375, 0.5843, 0.723, 0.7502, 0.896, 0.9066, 0.9505, 0.955, 0.9462, 0.9573, 0.9631, 0.9582]
 
-
-
-    if strategy == "GSx":
-        pass
-
     if strategy== "EGAL":
         al_EGAL = EGAL(X_train_labeled_df, X_train_unlabeled_df, X_train_full_df, addendum_size)
         selected_indices = al_EGAL.query()
@@ -207,8 +211,8 @@ for cycle in range(num_cycles):
 
 
     if strategy == "BayesianAL":
-        al_BayesianAL = BayesianAL(X_train_labeled_df, y_train_labeled_df, X_train_unlabeled_df, y_train_unlabeled_df)
-        selected_indices = al_BayesianAL.query()
+        al_BayesianAL = BayesianAL()
+        selected_indices = al_BayesianAL.query(X_train_unlabeled_df, X_train_labeled_df, y_train_labeled_df, addendum_size)
 
         labeled_indices.extend(selected_indices)
         for idx in selected_indices:
@@ -222,6 +226,52 @@ for cycle in range(num_cycles):
         y_train_labeled_df = y_train_full_df.loc[labeled_indices]
         X_train_unlabeled_df = X_train_full_df.loc[unlabeled_indices]
         y_train_unlabeled_df = y_train_full_df.loc[unlabeled_indices]
+
+    # if strategy == "GSx":
+    #     al_GSx = GSx(random_state=42)
+    #     # 使用 query 方法选择 2 个样本
+    #     selected_indices = al_GSx.query(X_train_unlabeled_df, n_act=addendum_size)
+    #     labeled_indices.extend(selected_indices)
+    #     for idx in selected_indices:
+    #         unlabeled_indices.remove(idx)
+    #     # 创建包含更新后的已标注样本子集
+    #     labeled_subset = Subset(train_full_dataset, labeled_indices)
+    #     # 创建 DataLoader
+    #     train_loader = DataLoader(labeled_subset, batch_size=32, shuffle=True)
+    #     # 索引更新后，传入参数也要更新
+    #     X_train_labeled_df = X_train_full_df.loc[labeled_indices]
+    #     y_train_labeled_df = y_train_full_df.loc[labeled_indices]
+    #     X_train_unlabeled_df = X_train_full_df.loc[unlabeled_indices]
+    #     y_train_unlabeled_df = y_train_full_df.loc[unlabeled_indices]
+    #
+    # if strategy == "GSy":
+    #     al_GSy = GSy(random_state=42)
+    #     # 使用 query 方法选择 2 个样本
+    #     selected_indices = al_GSy.query(X_train_unlabeled_df, addendum_size, X_train_labeled_df, y_train_labeled_df, y_train_unlabeled_df)
+    #     labeled_indices.extend(selected_indices)
+    #     for idx in selected_indices:
+    #         unlabeled_indices.remove(idx)
+    #     # 创建包含更新后的已标注样本子集
+    #     labeled_subset = Subset(train_full_dataset, labeled_indices)
+    #     # 创建 DataLoader
+    #     train_loader = DataLoader(labeled_subset, batch_size=32, shuffle=True)
+    #     # 索引更新后，传入参数也要更新
+    #     X_train_labeled_df = X_train_full_df.loc[labeled_indices]
+    #     y_train_labeled_df = y_train_full_df.loc[labeled_indices]
+    #     X_train_unlabeled_df = X_train_full_df.loc[unlabeled_indices]
+    #     y_train_unlabeled_df = y_train_full_df.loc[unlabeled_indices]
+    #
+    # if strategy == "GSi":
+    #     al_GSi = GSi(random_state=42)
+    #     selected_indices = al_GSi.query(X_train_unlabeled_df, addendum_size, X_train_labeled_df, y_train_labeled_df, y_train_unlabeled_df)
+    #
+    # if strategy == "GSBAG":
+    #     kernel = C(1.0, (1e-3, 1e3)) * RBF(1, (1e-2, 1e2))
+    #     al_GSBAG = GSBAG(random_state=42, kernel=kernel)
+    #     selected_indices = al_GSBAG.query(X_train_unlabeled_df, X_train_labeled_df, addendum_size)
+
+
+
 
 
 
