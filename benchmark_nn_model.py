@@ -61,7 +61,7 @@ class ModelTrainer:
                 r2 = round(r2, 4)
 
         test_loss /= len(test_loader.dataset)
-        print(f"Test Loss: {test_loss:.4f}")
-        print(f"r2_score: {r2}")
+        # print(f"Test Loss: {test_loss:.4f}")
+        # print(f"r2_score: {r2}")
 
         return test_loss, r2

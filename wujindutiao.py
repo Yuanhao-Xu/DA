@@ -14,7 +14,7 @@ from alstr_MCD import MC_Dropout
 from alstr_EGAL import EGAL
 from alstr_BayesianAL import BayesianAL
 import pyro
-from tqdm import tqdm
+
 # 设置 Pyro 的随机种子
 pyro.set_rng_seed(42)
 
@@ -32,12 +32,12 @@ set_seed(SEED)
 
 # 基准模型参数
 # strategies = ["RS", "LL4AL", "LCMD", "MCD", "EGAL", "BayesianAL"]
-strategies = ["BayesianAL", "LL4AL"]
+strategies = ["BayesianAL"]
 
 addendum_init = 100
 BATCH = 32
 
-num_cycles = 3
+num_cycles = 30
 epochs = 500
 addendum_size = 20
 
@@ -56,8 +56,7 @@ al_BayesianAL = BayesianAL()
 
 # 遍历所有策略
 for strategy in strategies:
-    # print(f"Executing strategy: {strategy}")
-    desc_text = f"[{strategy:^15}] ⇢ Cycles".ljust(10)
+    print(f"Executing strategy: {strategy}")
 
     # 初始化模型和数据
     set_seed(SEED)
@@ -76,9 +75,9 @@ for strategy in strategies:
 
     test_R2s = []
 
-    for cycle in tqdm(range(num_cycles), desc=f"{desc_text} ", ncols=80):
+    for cycle in range(num_cycles):
 
-        # print(f"Active Learning Cycle {cycle + 1}/{num_cycles} for {strategy}")
+        print(f"Active Learning Cycle {cycle + 1}/{num_cycles} for {strategy}")
 
         # 训练模型
         model = trainer.train_model(current_train_loader, epochs)
@@ -125,8 +124,6 @@ for strategy in strategies:
             selected_indices = al_BayesianAL.query(current_X_train_unlabeled_df, current_X_train_labeled_df,
                                                    current_y_train_labeled_df, addendum_size)
 
-
-
         else:
             print("An undefined strategy was encountered.")  # 提示未定义的策略
             selected_indices = []
@@ -150,11 +147,3 @@ for strategy in strategies:
 
 # 打印或保存所有策略的结果
 print(all_strategy_results)
-
-
-# 初始数据集，采样点
-# model based的模型和框架模型一致会怎么样 找一个更好的外层框架模型
-# 外层模型改一下会怎么样
-# 高斯过程的用高斯过程的外部框架
-# 合成数据集sklearn 1000个数据以内    标签上+高斯噪声，哪一种抗噪能力强
-#

@@ -81,8 +81,8 @@ class BayesianAL:
     def train(self, X_train_labeled_tensor, y_train_labeled_tensor, num_iterations=1500):
         for j in range(num_iterations):
             loss = self.svi.step(X_train_labeled_tensor, y_train_labeled_tensor)
-            if j % 500 == 0:
-                print(f"Step {j} : loss = {loss}")
+            # if j % 500 == 0:
+            #     print(f"Step {j} : loss = {loss}")
 
     def predict_with_uncertainty(self, X, num_samples=50):
         sampled_models = [self.guide() for _ in range(num_samples)]

@@ -91,6 +91,21 @@ class DataProcessor:
 
 
 
+
+__all__ = [
+    'train_loader',
+    'test_loader',
+    'labeled_indices',
+    'unlabeled_indices',
+    'train_full_dataset',
+    'X_train_labeled_df',
+    'y_train_labeled_df',
+    'X_train_unlabeled_df',
+    'y_train_unlabeled_df',
+    'X_train_full_df',
+    'y_train_full_df'
+]
+
 # 实例化 DataProcessor 类
 Dataset_UCI = DataProcessor(file_path='Dataset/UCI_Concrete_Data.xls', addendum_init=100, batch_size=32)
 
@@ -117,6 +132,3 @@ X_train_full_df = Dataset_UCI.X_train_full
 y_train_full_df = Dataset_UCI.y_train_full
 
 
-# y_train_labeled_tensor = torch.tensor(y_train_labeled_df.values, dtype=torch.float32)
-#
-# print(y_train_labeled_tensor.shape[1])

@@ -4,30 +4,27 @@ import random
 import torch
 from torch.utils.data import Subset
 import numpy as np
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 
 # 导入自定义变量和函数
-from data_process import (train_loader,
-                          test_loader,
-                          labeled_indices,
-                          unlabeled_indices,
-                          train_full_dataset,
-                          X_train_labeled_df,
-                          y_train_labeled_df,
-                          X_train_unlabeled_df,
-                          y_train_unlabeled_df,
-                          X_train_full_df,
-                          y_train_full_df)
+from DataProcessor import (train_loader,
+                           test_loader,
+                           labeled_indices,
+                           unlabeled_indices,
+                           train_full_dataset,
+                           X_train_labeled_df,
+                           y_train_labeled_df,
+                           X_train_unlabeled_df,
+                           y_train_unlabeled_df,
+                           X_train_full_df,
+                           y_train_full_df)
 from benchmark_nn_model import BenchmarkModel, ModelTrainer
 from alstr_RS import RS
 from alstr_LL4AL import LL4AL
-from bmdal_reg.alstr_LCMD import LCMD
+from DA.alstr_LCMD import LCMD
 from alstr_MCD import MC_Dropout
 from alstr_EGAL import EGAL
 from alstr_BayesianAL import BayesianAL
-from alstr_GSx import GSx
-from alstr_GSy import GSy
-from alstr_GSi import GSi
 from alstr_GSBAG import GSBAG
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 import pyro
@@ -265,10 +262,10 @@ for cycle in range(num_cycles):
     #     al_GSi = GSi(random_state=42)
     #     selected_indices = al_GSi.query(X_train_unlabeled_df, addendum_size, X_train_labeled_df, y_train_labeled_df, y_train_unlabeled_df)
     #
-    # if strategy == "GSBAG":
-    #     kernel = C(1.0, (1e-3, 1e3)) * RBF(1, (1e-2, 1e2))
-    #     al_GSBAG = GSBAG(random_state=42, kernel=kernel)
-    #     selected_indices = al_GSBAG.query(X_train_unlabeled_df, X_train_labeled_df, addendum_size)
+    if strategy == "GSBAG":
+        kernel = C(1.0, (1e-3, 1e3)) * RBF(1, (1e-2, 1e2))
+        al_GSBAG = GSBAG(random_state=42, kernel=kernel)
+        selected_indices = al_GSBAG.query(X_train_unlabeled_df, X_train_labeled_df, addendum_size)
 
 
 
