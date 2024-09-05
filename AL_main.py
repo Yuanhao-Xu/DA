@@ -18,7 +18,7 @@ from DataProcessor import (train_loader,
                            y_train_unlabeled_df,
                            X_train_full_df,
                            y_train_full_df)
-from benchmark_nn_model import BenchmarkModel, ModelTrainer
+from BenchmarkModel import BenchmarkModel, ModelTrainer
 from alstr_RS import RS
 from alstr_LL4AL import LL4AL
 from DA.alstr_LCMD import LCMD

@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 # 导入自定义变量和函数
 from DataProcessor import *
-from benchmark_nn_model import BenchmarkModel, ModelTrainer
+from BenchmarkModel import BenchmarkModel, ModelTrainer
 from alstr_RS import RS
 from alstr_LL4AL import LL4AL
 from alstr_LCMD import LCMD

@@ -1,23 +1,27 @@
 import random
 import torch
+from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 from torch.utils.data import Subset
 import numpy as np
 from torch.utils.data import DataLoader
 
 # 导入自定义变量和函数
 from DataProcessor import *
-from benchmark_nn_model import BenchmarkModel, ModelTrainer
+from BenchmarkModel import BenchmarkModel, ModelTrainer
 from alstr_RS import RS
 from alstr_LL4AL import LL4AL
 from alstr_LCMD import LCMD
 from alstr_MCD import MC_Dropout
 from alstr_EGAL import EGAL
 from alstr_BayesianAL import BayesianAL
+from alstr_GSx import GSx
+from alstr_GSy import GSy
+from alstr_GSi import GSi
+from alstr_GSBAG import GSBAG
 import pyro
 from tqdm import tqdm
 # 设置 Pyro 的随机种子
 pyro.set_rng_seed(42)
-
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -31,21 +35,17 @@ SEED = 50
 set_seed(SEED)
 
 # 基准模型参数
-# strategies = ["RS", "LL4AL", "LCMD", "MCD", "EGAL", "BayesianAL"]
-strategies = ["BayesianAL", "LL4AL"]
-
+# strategies = ["RS", "LL4AL", "LCMD", "MCD", "EGAL", "BayesianAL", "GSx", "GSy", "GSi"]
+strategies = ["GSBAG"]
 addendum_init = 100
-BATCH = 32
-
-num_cycles = 3
+addendum_size = 10
+num_cycles = 70
 epochs = 500
-addendum_size = 20
-
 NN_input = X_train_labeled_df.shape[1]
 NN_output = y_train_labeled_df.shape[1]
 
 # 字典保存每种策略的 test_R2s
-all_strategy_results = {}
+R2s_dict = {}
 # 实例化所有策略类
 al_RS = RS()
 al_LL4AL = LL4AL(BATCH=32, LR=0.001, MARGIN=0.7, WEIGHT=1.5, EPOCH=200, EPOCHL=30, WDECAY=5e-4)
@@ -53,10 +53,13 @@ al_LCMD = LCMD()
 al_MCD = MC_Dropout(NN_input, NN_output)
 al_EGAL = EGAL()
 al_BayesianAL = BayesianAL()
+al_GSx = GSx(random_state=42)
+al_GSy = GSy(random_state=42)
+al_GSi = GSi(random_state=42)
+al_GSBAG = GSBAG(kernel=RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
 
 # 遍历所有策略
 for strategy in strategies:
-    # print(f"Executing strategy: {strategy}")
     desc_text = f"[{strategy:^15}] ⇢ Cycles".ljust(10)
 
     # 初始化模型和数据
@@ -125,7 +128,30 @@ for strategy in strategies:
             selected_indices = al_BayesianAL.query(current_X_train_unlabeled_df, current_X_train_labeled_df,
                                                    current_y_train_labeled_df, addendum_size)
 
+        elif strategy == "GSx":
+            selected_indices = al_GSx.query(current_X_train_unlabeled_df, n_act=addendum_size)
 
+        elif strategy == "GSy":
+            selected_indices = al_GSy.query(current_X_train_unlabeled_df,
+                                            addendum_size,
+                                            current_X_train_labeled_df,
+                                            current_y_train_labeled_df,
+                                            current_y_train_unlabeled_df)
+
+        elif strategy == "GSi":
+            selected_indices = al_GSi.query(current_X_train_unlabeled_df,
+                                            addendum_size,
+                                            current_X_train_labeled_df,
+                                            current_y_train_labeled_df,
+                                            current_y_train_unlabeled_df)
+
+        elif strategy == "GSBAG":
+            # X_train_labeled_fit = current_X_train_labeled_df.value
+            # y_train_labeled_fit = current_y_train_labeled_df.values.ravel()
+            al_GSBAG.fit(current_X_train_labeled_df, current_y_train_labeled_df)
+            selected_indices = al_GSBAG.query(current_X_train_unlabeled_df,
+                                           current_X_train_labeled_df,
+                                           addendum_size)
 
         else:
             print("An undefined strategy was encountered.")  # 提示未定义的策略
@@ -146,10 +172,10 @@ for strategy in strategies:
         current_y_train_unlabeled_df = y_train_full_df.loc[current_unlabeled_indices]
 
     # 将每种策略的结果存入字典
-    all_strategy_results[strategy] = test_R2s
+    R2s_dict[strategy] = test_R2s
 
 # 打印或保存所有策略的结果
-print(all_strategy_results)
+print(R2s_dict)
 
 
 # 初始数据集，采样点
@@ -158,3 +184,9 @@ print(all_strategy_results)
 # 高斯过程的用高斯过程的外部框架
 # 合成数据集sklearn 1000个数据以内    标签上+高斯噪声，哪一种抗噪能力强
 #
+
+# 1.数据集本身的问题
+# 2.初始数据和采样数据的选择
+# 3.测哪些数据集
+# 4.合成数据集
+# 5.GSBAG
