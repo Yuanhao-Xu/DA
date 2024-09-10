@@ -117,7 +117,8 @@ paths = {"UCI":"Dataset/uci_concrete/concrete_data.csv",
          "pullout_ifss":"Dataset/pullout/dataset_ifss.csv",
          "Gl_5x1100":"G_Dataset\dataset_l5x1100.csv",
          "Gnl_5x1100":"G_Dataset\dataset_nl5x1100.csv",
-         "有噪声":"G_Dataset\dataset_nl5x1100_noise.csv"
+         "有噪声":"G_Dataset/666.csv"
+
 
 
 
