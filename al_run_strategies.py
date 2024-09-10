@@ -31,15 +31,49 @@ def set_seed(seed):
     random.seed(seed)
 
 
-SEED = 50
+SEED = 50 # 之前是50
 set_seed(SEED)
 
+# {'BayesianAL': [0.4501, 0.4517, 0.388], 'EGAL': [0.4501, 0.4911, 0.8158], 'LCMD': [0.4501, 0.5908, 0.7616],
+#  'LL4AL': [0.4501, 0.5906, 0.8085], 'MCD': [0.4501, 0.442, 0.5853], 'RS': [0.4501, 0.668, 0.9289]}
+# {'GSx': [0.4501, 0.8048, 0.934]}
+
+# {'BayesianAL': [0.069, 0.2824, 0.4006],
+#  'EGAL': [0.069, 0.2761, 0.7779],
+#  'LCMD': [0.069, 0.4999, 0.821],
+#  'LL4AL': [0.069, 0.1563, 0.2007],
+#  'MCD': [0.069, 0.3795, 0.5281],
+#  'RS': [0.069, 0.427, 0.792]}
+#  非线性 r = 42
+# {'BayesianAL': [0.3493, 0.4938, 0.675], 'EGAL': [0.3493, 0.5015, 0.893], 'LCMD': [0.3493, 0.7624, 0.8774],
+#  'LL4AL': [0.3493, 0.516, 0.8887], 'MCD': [0.3493, 0.7501, 0.9267], 'RS': [0.3493, 0.5782, 0.915]}
+
+# {'BayesianAL': [0.306, 0.3502, 0.3133],
+#  'EGAL': [0.306, 0.4405, 0.4431],
+#  'LCMD': [0.306, 0.5084, 0.4675],
+#  'LL4AL': [0.306, 0.4252, 0.5097],
+#  'MCD': [0.306, 0.3757, 0.4259],
+#  'RS': [0.306, 0.5113, 0.5307]}
+
+# {'RS': [0.306, 0.5113, 0.5307, 0.4975, 0.43, 0.4775],
+#  'LL4AL': [0.306, 0.4252, 0.5097, 0.3957, 0.4778, 0.5262],
+#  'LCMD': [0.306, 0.5084, 0.4675, 0.3835, 0.4362, 0.3658],
+#  'MCD': [0.306, 0.3757, 0.4259, 0.6334, 0.5606, 0.5869],
+#  'EGAL': [0.306, 0.4405, 0.4431, 0.43, 0.4932, 0.5097],
+#  'BayesianAL': [0.306, 0.3502, 0.3133, 0.3525, 0.4431, 0.4154]}
+
+
+
+
+
+
+
 # 基准模型参数
-# strategies = ["RS", "LL4AL", "LCMD", "MCD", "EGAL", "BayesianAL", "GSx", "GSy", "GSi"]
-strategies = ["GSBAG"]
+# strategies = ["RS", "LL4AL", "LCMD", "MCD", "EGAL", "BayesianAL", "GSx", "GSy", "GSi", "GSBAG"]
+strategies = ["RS","LCMD"]
 addendum_init = 100
-addendum_size = 10
-num_cycles = 70
+addendum_size = 100
+num_cycles = 7
 epochs = 500
 NN_input = X_train_labeled_df.shape[1]
 NN_output = y_train_labeled_df.shape[1]
@@ -115,8 +149,7 @@ for strategy in strategies:
                 current_X_train_unlabeled_df,
                 current_y_train_unlabeled_df,
                 addendum_size=addendum_size,
-                n_samples=50  # Monte Carlo采样次数
-            )
+                n_samples=50)
 
         elif strategy == "EGAL":
             selected_indices = al_EGAL.query(current_X_train_labeled_df,
@@ -146,8 +179,6 @@ for strategy in strategies:
                                             current_y_train_unlabeled_df)
 
         elif strategy == "GSBAG":
-            # X_train_labeled_fit = current_X_train_labeled_df.value
-            # y_train_labeled_fit = current_y_train_labeled_df.values.ravel()
             al_GSBAG.fit(current_X_train_labeled_df, current_y_train_labeled_df)
             selected_indices = al_GSBAG.query(current_X_train_unlabeled_df,
                                            current_X_train_labeled_df,
@@ -186,7 +217,13 @@ print(R2s_dict)
 #
 
 # 1.数据集本身的问题
-# 2.初始数据和采样数据的选择
+# 2.初始数据和采样数的选择
 # 3.测哪些数据集
 # 4.合成数据集
 # 5.GSBAG
+
+
+# 1.随即搜索设置为基线1
+# 2.找特征维度数据集小一点的数据集
+# 3.合成数据集，先不加噪声测试模型 sklearn
+# 4.对比不同的边界条件 初始化数据方法，采样数量，初始数据集大小 100+10*n

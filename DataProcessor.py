@@ -18,7 +18,7 @@ def set_seed(seed=42):
     torch.backends.cudnn.benchmark = False
 
 # 设置随机种子
-set_seed(42)
+set_seed(42) # 42
 
 
 
@@ -29,8 +29,9 @@ class DataProcessor:
         self.addendum_init = addendum_init
         self.batch_size = batch_size
 
+
         # 加载数据
-        self.data = pd.read_excel(self.file_path)
+        self.data = pd.read_csv(self.file_path)
 
         # 数据标准化
         self.X = self.data.iloc[:, :-1].values  # 转化为 NumPy 数组
@@ -106,8 +107,30 @@ __all__ = [
     'y_train_full_df'
 ]
 
+
+
+paths = {"UCI":"Dataset/uci_concrete/concrete_data.csv",
+         "BFRC_cs":"Dataset\BFRC\data_cs.csv",
+         "BFRC_fs":"Dataset\BFRC\data_fs.csv",
+         "BFRC_sts":"Dataset\BFRC\data_sts.csv",
+         "pullout_fmax":"Dataset/pullout/dataset_fmax.csv",
+         "pullout_ifss":"Dataset/pullout/dataset_ifss.csv",
+         "Gl_5x1100":"G_Dataset\dataset_l5x1100.csv",
+         "Gnl_5x1100":"G_Dataset\dataset_nl5x1100.csv",
+         "有噪声":"G_Dataset\dataset_nl5x1100_noise.csv"
+
+
+
+
+
+
+
+
+         }
+
+
 # 实例化 DataProcessor 类
-Dataset_UCI = DataProcessor(file_path='Dataset/UCI_Concrete_Data.xls', addendum_init=100, batch_size=32)
+Dataset_UCI = DataProcessor(file_path=paths["有噪声"], addendum_init=100, batch_size=32)
 
 # 获取训练器
 train_loader = Dataset_UCI.train_loader

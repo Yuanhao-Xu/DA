@@ -99,7 +99,7 @@ class LL4AL:
         models['module'].eval()
         uncertainty = torch.tensor([])
         # 创建一个变量，用于记录使用lossnet预测未标记数据集“比较大小”的精确度
-        accuracy_list = []
+        # accuracy_list = []
 
         with torch.no_grad():
             for (inputs, labels) in unlabeled_loader:
@@ -110,21 +110,21 @@ class LL4AL:
                 pred_loss = models['module'](features)  # pred_loss = criterion(scores, labels) # ground truth loss
 
                 pred_loss = pred_loss.view(pred_loss.size(0))  # 将预测损失展平
-                # 评估环节
-
-                target_loss = criterion(scores, labels)
-                target_loss = target_loss.detach()
-                target_loss = target_loss.view(target_loss.size(0))
-                pred_loss_compare = (pred_loss - pred_loss.flip(0))[:len(pred_loss) // 2]
-                real_loss_compare = (target_loss - target_loss.flip(0))[:len(pred_loss) // 2]
-                # 初始化 accuracy
-                accuracy_batch = 0
-                # 比较两个张量相同索引位置的值
-                for val1, val2 in zip(pred_loss_compare, real_loss_compare):
-                    if (val1 > 0 and val2 > 0) or (val1 < 0 and val2 < 0):
-                        accuracy_batch += 1
-                accuracy_batch = accuracy_batch / len(pred_loss_compare)
-                accuracy_list.append(accuracy_batch)
+                # # 评估环节
+                #
+                # target_loss = criterion(scores, labels)
+                # target_loss = target_loss.detach()
+                # target_loss = target_loss.view(target_loss.size(0))
+                # pred_loss_compare = (pred_loss - pred_loss.flip(0))[:len(pred_loss) // 2]
+                # real_loss_compare = (target_loss - target_loss.flip(0))[:len(pred_loss) // 2]
+                # # 初始化 accuracy
+                # accuracy_batch = 0
+                # # 比较两个张量相同索引位置的值
+                # for val1, val2 in zip(pred_loss_compare, real_loss_compare):
+                #     if (val1 > 0 and val2 > 0) or (val1 < 0 and val2 < 0):
+                #         accuracy_batch += 1
+                # accuracy_batch = accuracy_batch / len(pred_loss_compare)
+                # accuracy_list.append(accuracy_batch)
                 # 某一批“比较矩阵”的对比
                 # tensor([-0.5520, 0.3524, -0.1835, -0.4242, 0.6650, -0.3441, -0.4357, 0.2084, 0.1111, 0.1558, -0.2874, 0.5138, -0.3408, 0.5229, -0.2080, 0.5975])
                 # tensor([-0.0005, 0.0865, -0.0004, -0.0141, -0.0327, -0.0041, -0.0097, 0.0273, 0.0225, 0.0050, -0.0747, 0.0164, 0.0169, -0.0585, -0.0400, 0.0346])
