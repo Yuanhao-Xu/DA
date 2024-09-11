@@ -47,10 +47,10 @@ set_seed(SEED)
 
 # 基准模型参数
 # strategies = ["RS", "LL4AL", "LCMD", "MCD", "EGAL", "BayesianAL", "GSx", "GSy", "GSi", "GSBAG"]
-strategies = ["RS", "LL4AL", "LCMD", "MCD", "EGAL", "BayesianAL"]
+strategies = ["RS"]
 addendum_init = 100
 addendum_size = 100
-num_cycles = 7
+num_cycles = 5
 epochs = 500
 NN_input = X_train_labeled_df.shape[1]
 NN_output = y_train_labeled_df.shape[1]

@@ -30,13 +30,7 @@ class DataGenerator:
             self.feature_ranges = feature_ranges
 
     def _apply_noise(self, X, feature_idx):
-        """
-        随机为某个特征应用不同的噪声类型，并根据特征的值范围调整噪声强度。
 
-        参数:
-        X (ndarray): 特征矩阵。
-        feature_idx (int): 特征的索引号。
-        """
         noise_types = ['normal', 'uniform', 'poisson']  # 噪声类型列表
         chosen_noise = np.random.choice(noise_types)  # 随机选择一种噪声类型
         feature_range = np.max(X[:, feature_idx]) - np.min(X[:, feature_idx])  # 计算特征的范围
@@ -60,17 +54,8 @@ class DataGenerator:
         X[:, feature_idx] += noise
 
     def nonlinear(self, function='sin', add_noise=True):
-        """
-        生成非线性回归数据集。
+        # function(str): 非线性函数类型('sin', 'square', 'exp')
 
-        参数:
-        function (str): 非线性函数类型 ('sin', 'square', 'exp')。
-        add_noise (bool): 是否添加噪声。
-
-        返回:
-        X (ndarray): 特征矩阵。
-        y (ndarray): 标签数组。
-        """
         X = np.zeros((self.n_samples, self.n_features))
 
         # 为每个特征生成数据
@@ -101,14 +86,7 @@ class DataGenerator:
         return X, y
 
     def save2csv(self, X, y, filename="dataset.csv"):
-        """
-        将生成的数据集保存为CSV文件。
 
-        参数:
-        X (ndarray): 特征矩阵。
-        y (ndarray): 标签数组。
-        filename (str): 保存文件名。
-        """
         data = np.hstack((X, y.reshape(-1, 1)))
         columns = [f"Feature_{i + 1}" for i in range(X.shape[1])] + ["Target"]
         df = pd.DataFrame(data, columns=columns)  # 创建DataFrame
@@ -117,8 +95,8 @@ class DataGenerator:
 
 data_gen = DataGenerator(n_samples=1000, n_features=3, noise_range=(0.001, 0.03), feature_ranges=[(0, 10), (-5, 5), (5, 15)], random_seed=42)
 
-# 生成非线性数据集（例如 'sin' 函数），并添加噪声
+# 生成非线性数据集，并添加噪声
 X, y = data_gen.nonlinear(function='sin', add_noise=True)
 
 # 保存为CSV文件
-data_gen.save2csv(X, y, filename="666.csv")
+data_gen.save2csv(X, y, filename="dataset_nl5x1100_noise.csv")

@@ -109,29 +109,19 @@ __all__ = [
 
 
 
-paths = {"UCI":"Dataset/uci_concrete/concrete_data.csv",
+paths = {"UCI":"Dataset\concrete\concrete_data.csv",
          "BFRC_cs":"Dataset\BFRC\data_cs.csv",
          "BFRC_fs":"Dataset\BFRC\data_fs.csv",
          "BFRC_sts":"Dataset\BFRC\data_sts.csv",
          "pullout_fmax":"Dataset/pullout/dataset_fmax.csv",
          "pullout_ifss":"Dataset/pullout/dataset_ifss.csv",
-         "Gl_5x1100":"G_Dataset\dataset_l5x1100.csv",
-         "Gnl_5x1100":"G_Dataset\dataset_nl5x1100.csv",
-         "有噪声":"G_Dataset/666.csv"
-
-
-
-
-
-
-
-
-
+         "GenData1":"G_Dataset\dataset_nl5x1100_noise.csv",
+         "ENB2012":"Dataset\ENB2012\data1.csv"
          }
 
 
 # 实例化 DataProcessor 类
-Dataset_UCI = DataProcessor(file_path=paths["有噪声"], addendum_init=100, batch_size=32)
+Dataset_UCI = DataProcessor(file_path=paths["UCI"], addendum_init=100, batch_size=32)
 
 # 获取训练器
 train_loader = Dataset_UCI.train_loader
