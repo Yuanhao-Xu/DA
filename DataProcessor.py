@@ -116,12 +116,14 @@ paths = {"UCI":"Dataset\concrete\concrete_data.csv",
          "pullout_fmax":"Dataset/pullout/dataset_fmax.csv",
          "pullout_ifss":"Dataset/pullout/dataset_ifss.csv",
          "GenData1":"G_Dataset\dataset_nl5x1100_noise.csv",
-         "ENB2012":"Dataset\ENB2012\data1.csv"
+         "ENB2012":"Dataset\ENB2012\data1.csv",
+         "测试":"G_Dataset/data_1100s_11f_0.005n.csv"
+
          }
 
 
 # 实例化 DataProcessor 类
-Dataset_UCI = DataProcessor(file_path=paths["UCI"], addendum_init=100, batch_size=32)
+Dataset_UCI = DataProcessor(file_path=paths["测试"], addendum_init=100, batch_size=32)
 
 # 获取训练器
 train_loader = Dataset_UCI.train_loader
