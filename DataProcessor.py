@@ -18,13 +18,13 @@ def set_seed(seed=42):
     torch.backends.cudnn.benchmark = False
 
 # 设置随机种子
-set_seed(42) # 42
+set_seed(50) # 42
 
 
 
 
 class DataProcessor:
-    def __init__(self, file_path, addendum_init=100, batch_size=32):
+    def __init__(self, file_path, addendum_init, batch_size=32):
         self.file_path = file_path
         self.addendum_init = addendum_init
         self.batch_size = batch_size
@@ -57,6 +57,10 @@ class DataProcessor:
         self.X_test = self.X_test.reset_index(drop=True)
         self.y_train_full = self.y_train_full.reset_index(drop=True)
         self.y_test = self.y_test.reset_index(drop=True)
+
+        # DataFrame形式的测试集特征/标签
+        self.X_test_df = self.X_test
+        self.y_test_df = self.y_test
 
         # 获取训练集的索引
         self.train_indices = self.X_train_full.index
@@ -104,26 +108,34 @@ __all__ = [
     'X_train_unlabeled_df',
     'y_train_unlabeled_df',
     'X_train_full_df',
-    'y_train_full_df'
+    'y_train_full_df',
+    'X_test_df',
+    'y_test_df'
 ]
 
 
 
-paths = {"UCI":"Dataset\concrete\concrete_data.csv",
-         "BFRC_cs":"Dataset\BFRC\data_cs.csv",
-         "BFRC_fs":"Dataset\BFRC\data_fs.csv",
-         "BFRC_sts":"Dataset\BFRC\data_sts.csv",
+paths = {"UCI":"Dataset/concrete/concrete_data.csv",
+         "BFRC_cs":"Dataset/BFRC/data_cs.csv",
+         "BFRC_fs":"Dataset/BFRC/data_fs.csv",
+         "BFRC_sts":"Dataset/BFRC/data_sts.csv",
          "pullout_fmax":"Dataset/pullout/dataset_fmax.csv",
          "pullout_ifss":"Dataset/pullout/dataset_ifss.csv",
-         "GenData1":"G_Dataset\dataset_nl5x1100_noise.csv",
-         "ENB2012":"Dataset\ENB2012\data1.csv",
-         "测试":"G_Dataset/data_1100s_11f_0.005n.csv"
+         "ENB2012":"Dataset/ENB2012/data1.csv",
+         "GEN3f5n":"G_Dataset/data_1100s_3f5n.csv",
+         "GEN5f5n":"G_Dataset/data_1100s_3f5n.csv",# 跑错
+
+         "GEN7f5n":"G_Dataset/data_1100s_7f5n.csv",
+         "GEN5f0n":"G_Dataset/data_1100s_5f_0n.csv",
+         "GEN5f20n":"G_Dataset/data_1100s_5f20n.csv",
+         "测试":"G_Dataset/40zaosheng.csv"
+
 
          }
 
 
 # 实例化 DataProcessor 类
-Dataset_UCI = DataProcessor(file_path=paths["测试"], addendum_init=100, batch_size=32)
+Dataset_UCI = DataProcessor(file_path=paths["GEN7f5n"], addendum_init=10)
 
 # 获取训练器
 train_loader = Dataset_UCI.train_loader
@@ -146,5 +158,9 @@ y_train_unlabeled_df = Dataset_UCI.y_train_unlabeled_df
 # 获取完整训练集的特征和标签
 X_train_full_df = Dataset_UCI.X_train_full
 y_train_full_df = Dataset_UCI.y_train_full
+
+# 用于xgb
+X_test_df = Dataset_UCI.X_test_df
+y_test_df = Dataset_UCI.y_test_df
 
 
