@@ -37,7 +37,7 @@ set_seed(SEED)
 # strategies = ["RS"]
 strategies = ["RS", "LL4AL", "LCMD", "MCD", "EGAL", "BayesianAL", "GSx", "GSy", "GSi", "GSBAG"]
 addendum_size = 10
-num_cycles = 85
+num_cycles = 20
 NN_input = X_train_labeled_df.shape[1]
 NN_output = y_train_labeled_df.shape[1]
 
@@ -180,7 +180,7 @@ folder_name = 'xgb_res'
 if not os.path.exists(folder_name):
     os.makedirs(folder_name)
 
-save_path = os.path.join(folder_name, 'GEN7f5n_10i_10s_85c_50s.json')
+save_path = os.path.join(folder_name, 'BFRC_sts_10i_10s_20c_50s.json')
 with open(save_path, 'w') as f:
     json.dump(R2s_dict, f)
 

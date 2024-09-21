@@ -123,19 +123,18 @@ paths = {"UCI":"Dataset/concrete/concrete_data.csv",
          "pullout_ifss":"Dataset/pullout/dataset_ifss.csv",
          "ENB2012":"Dataset/ENB2012/data1.csv",
          "GEN3f5n":"G_Dataset/data_1100s_3f5n.csv",
-         "GEN5f5n":"G_Dataset/data_1100s_3f5n.csv",# 跑错
-
+         "GEN5f5n":"G_Dataset/data_1100s_5f5n.csv",# 跑错
          "GEN7f5n":"G_Dataset/data_1100s_7f5n.csv",
-         "GEN5f0n":"G_Dataset/data_1100s_5f_0n.csv",
-         "GEN5f20n":"G_Dataset/data_1100s_5f20n.csv",
-         "测试":"G_Dataset/40zaosheng.csv"
+         "GEN9f5n":"G_Dataset/data_1100s_9f5n.csv",
+         "GEN11f5n":"G_Dataset/data_1100s_11f5n.csv"
+
 
 
          }
 
 
 # 实例化 DataProcessor 类
-Dataset_UCI = DataProcessor(file_path=paths["GEN7f5n"], addendum_init=10)
+Dataset_UCI = DataProcessor(file_path=paths["BFRC_sts"], addendum_init=10)
 
 # 获取训练器
 train_loader = Dataset_UCI.train_loader
