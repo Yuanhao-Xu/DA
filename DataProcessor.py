@@ -113,17 +113,22 @@ __all__ = [
     'y_test_df'
 ]
 
-
-
-paths = {"UCI":"Dataset/concrete/concrete_data.csv",
+paths = {"concrete_uci":"Dataset/concrete/concrete_data.csv",
          "BFRC_cs":"Dataset/BFRC/data_cs.csv",
          "BFRC_fs":"Dataset/BFRC/data_fs.csv",
          "BFRC_sts":"Dataset/BFRC/data_sts.csv",
          "pullout_fmax":"Dataset/pullout/dataset_fmax.csv",
          "pullout_ifss":"Dataset/pullout/dataset_ifss.csv",
-         "ENB2012":"Dataset/ENB2012/data1.csv",
+         "CST":"Dataset/Concrete_Slump_Test/data.csv",
+         "uhpc_cs":"Dataset/uhpc/Compressive_strength.csv",
+         "uhpc_fs":"Dataset/uhpc/Flexural_strength.csv",
+         "uhpc_mss":"Dataset/uhpc/Mini_slump_spread.csv",
+         "uhpc_porosity":"Dataset/uhpc/Porosity.csv",
+         "ENB2012_HL": "Dataset/ENB2012/data1.csv",
+         "ENB2012_CL":"Dataset/ENB2012/data2.csv",
+
          "GEN3f5n":"G_Dataset/data_1100s_3f5n.csv",
-         "GEN5f5n":"G_Dataset/data_1100s_5f5n.csv",# 跑错
+         "GEN5f5n":"G_Dataset/data_1100s_5f5n.csv",
          "GEN7f5n":"G_Dataset/data_1100s_7f5n.csv",
          "GEN9f5n":"G_Dataset/data_1100s_9f5n.csv",
          "GEN11f5n":"G_Dataset/data_1100s_11f5n.csv"
@@ -133,8 +138,10 @@ paths = {"UCI":"Dataset/concrete/concrete_data.csv",
          }
 
 
+
+
 # 实例化 DataProcessor 类
-Dataset_UCI = DataProcessor(file_path=paths["BFRC_sts"], addendum_init=10)
+Dataset_UCI = DataProcessor(file_path=paths["GEN3f5n"], addendum_init=10)
 
 # 获取训练器
 train_loader = Dataset_UCI.train_loader
