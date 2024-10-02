@@ -51,7 +51,7 @@ def generate_r2_report(data_dict, dataset_name, addendum_init, addendum_size, r2
 addendum_init = 10
 addendum_size = 10
 
-# #调用函数生成报告
+# #真实数据集分析
 # generate_r2_report(uci_10i10s80c50s, 'concrete_uci', addendum_init, addendum_size, [0.5, 0.7, 0.9], 1030*0.8)
 # generate_r2_report(pullout_fmax_10i10s70c50s, 'pullout_fmax', addendum_init, addendum_size, [0.5, 0.7, 0.9], 918*0.8)
 # generate_r2_report(pullout_ifss_10i10s70c50s, 'pullout_ifss', addendum_init, addendum_size, [0.5, 0.7, 0.9], 918*0.8)
@@ -73,20 +73,14 @@ addendum_size = 10
 # generate_r2_report(GEN9f5n, 'GEN9f5n', addendum_init, addendum_size, [0.5, 0.7, 0.9], 1100*0.8)
 # generate_r2_report(GEN11f5n, 'GEN11f5n', addendum_init, addendum_size, [0.5, 0.7, 0.9], 1100*0.8)
 
+# #合成数据集分析
 # data_dicts = {'GEN3f5n': GEN3f5n, 'GEN5f5n': GEN5f5n, 'GEN7f5n': GEN7f5n, 'GEN9f5n': GEN9f5n, 'GEN11f5n': GEN11f5n}
 data_dicts = {'GEN3f5n': GEN3f5n, 'GEN5f5n': GEN5f5n, 'GEN7f5n': GEN7f5n}
-# 实例化和调用过程
-
-
-# 实例化类
 analyzer = R2Analyzer(data_dicts, [0.5, 0.6, 0.7, 0.8, 0.9], 880, addendum_init = 10, addendum_size = 10)
-
 # 找到R2阈值比例
 proportions_result = analyzer.find_r2_proportions()
-
 # 生成并保存图片
 image_folder = 'dataset_analysis_images'
 analyzer.plot_r2_proportions(proportions_result, image_folder)
-
 # 生成并保存Word文档
 analyzer.save_images_and_tables_to_word(proportions_result, image_folder, 'GEN五个阈值.docx')

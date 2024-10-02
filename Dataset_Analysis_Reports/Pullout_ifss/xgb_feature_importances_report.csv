@@ -1,0 +1,12 @@
+Feature,Importance
+Fiber_diameter,0.51339114
+Poissons_ratio_of_matrix,0.17442805
+Youngs_modulus_of_fiber,0.14865664
+Test_temperature,0.12588929
+Poisson_ratio_of_fiber,0.015235867
+Type_of_fiber,0.011644823
+Prepare_temperature,0.006173771
+Youngs_modulus_of_matrix,0.0030538694
+Loading_rate,0.00066926406
+Embedded_length,0.000628268
+Type_of_matrix,0.00022905288

@@ -18,11 +18,12 @@ class DataGenerator:
         # 确保线性特征数量不超过总特征数
         assert 0 <= self.n_lin <= self.n_features, "线性特征数量不能超过总特征数量"
 
-    def generate_data(self):
+    def generate_data(self, noise_level=0):
         """
         生成数据集，其中部分特征是线性关系，剩余特征为非线性（正弦函数）。
+        noise_level 参数用于生成不同等级的噪声，生成不同噪声等级时使用不同的随机种子。
         """
-        # 设置随机种子
+        # 设置主随机种子，生成特征数据
         np.random.seed(self.seed)
 
         # 生成随机特征矩阵 X，取值范围为 [0, 2π]，其中部分为线性特征
@@ -48,7 +49,9 @@ class DataGenerator:
         # 总目标变量 y 是线性和非线性部分的组合
         y = y_linear + y_nonlinear
 
-        # 计算目标变量的标准差并添加噪声
+        # 为了生成不同的噪声，使用基于初始随机种子的 noise_level 作为偏移生成新的子种子
+        noise_seed = self.seed + noise_level  # 使用不同的种子生成噪声
+        np.random.seed(noise_seed)
         y_std = np.std(y)
         noise = np.random.normal(0, self.noise * y_std, size=y.shape)
         y += noise
@@ -70,53 +73,18 @@ class DataGenerator:
         else:
             print("No data generated. Please run generate_data() first.")
 
-#
-# n_samples = 1100
-# feature_list = [3, 5, 7, 9, 11]
-# noise_list_1 = [0.05]  # 第一个任务：特征数为 3、5、7、9、11，噪声为 0.005
-# noise_list_2 = [0, 0.05, 0.1, 0.15, 0.20]  # 第二个任务：特征数为 5，噪声依次为 0, 0.005, 0.01, 0.015, 0.020
-#
-# # 任务一：依次生成特征数为 3, 5, 7, 9, 11，噪声为 0.005
-# for n_features in feature_list:
-#     for noise in noise_list_1:
-#         # 逻辑：当特征数大于等于7时，将多余的特征定义为线性特征
-#         if n_features >= 7:
-#             n_lin = n_features - 7  # 超过7的特征定义为线性
-#         else:
-#             n_lin = 0  # 特征数小于7时，所有特征都是非线性
-#
-#         # 实例化DataGenerator类
-#         generator = DataGenerator(n_samples=n_samples,
-#                                   n_features=n_features,
-#                                   n_lin=n_lin,
-#                                   noise=noise,
-#                                   phase=False)
-#         generator.generate_data()
-#         file_name = f"data_{n_samples}s_{n_features}f{int(noise*100)}n.csv"
-#         generator.save_to_csv(file_name)
-#
-# # 任务二：生成特征数为 5，噪声依次为 0, 0.005, 0.01, 0.015, 0.020
-# n_features = 5  # 固定特征数为 5
-# for noise in noise_list_2:
-#     generator = DataGenerator(n_samples=n_samples,
-#                               n_features=n_features,
-#                               n_lin=0,  # 特征数小于7，所有特征都是非线性
-#                               noise=noise,
-#                               phase=False)
-#     generator.generate_data()
-#     file_name = f"data_{n_samples}s_{n_features}f{int(noise*100)}n.csv"
-#     generator.save_to_csv(file_name)
 
+# 生成7个特征 10%噪声的数据集
+gen = DataGenerator(n_samples=1100, n_features=7, n_lin=0, noise=0.10, seed=50)
+gen.generate_data(noise_level=0)
+gen.save_to_csv('data_1100s_7f10n_NEW.csv')
 
+# 生成7个特征 10%噪声的数据集
+gen = DataGenerator(n_samples=1100, n_features=7, n_lin=0, noise=0.15, seed=50)
+gen.generate_data(noise_level=1)
+gen.save_to_csv('data_1100s_7f15n_NEW.csv')
 
-
-n_features = 7  # 固定特征数为 5
-
-generator = DataGenerator(n_samples=1100,
-                          n_features=n_features,
-                          n_lin=0,  # 特征数小于7，所有特征都是非线性
-                          noise=0.2,
-                          phase=True)
-generator.generate_data()
-file_name = f"09297f全非线性有相位20噪声.csv"
-generator.save_to_csv(file_name)
+# 生成7个特征 10%噪声的数据集
+gen = DataGenerator(n_samples=1100, n_features=7, n_lin=0, noise=0.20, seed=50)
+gen.generate_data(noise_level=2)
+gen.save_to_csv('data_1100s_7f20n_NEW.csv')

@@ -37,7 +37,7 @@ set_seed(SEED)
 # strategies = ["RS"]
 strategies = ["RS", "LL4AL", "LCMD", "MCD", "EGAL", "BayesianAL", "GSx", "GSy", "GSi", "GSBAG"]
 addendum_size = 10
-num_cycles = 60
+num_cycles = 85
 NN_input = X_train_labeled_df.shape[1]
 NN_output = y_train_labeled_df.shape[1]
 
@@ -175,13 +175,13 @@ for strategy in strategies:
 # 打印或保存所有策略的结果
 print(R2s_dict)
 
-# 保存文件
-folder_name = 'xgb_res'
-if not os.path.exists(folder_name):
-    os.makedirs(folder_name)
-
-save_path = os.path.join(folder_name, 'ENB2012_1_10i_10s_60c_50s.json')
-with open(save_path, 'w') as f:
-    json.dump(R2s_dict, f)
-
-print(f"R2s_dict has been saved to {save_path}")
+# # 保存文件
+# folder_name = 'xgb_res'
+# if not os.path.exists(folder_name):
+#     os.makedirs(folder_name)
+#
+# save_path = os.path.join(folder_name, 'ENB2012_1_10i_10s_60c_50s.json')
+# with open(save_path, 'w') as f:
+#     json.dump(R2s_dict, f)
+#
+# print(f"R2s_dict has been saved to {save_path}")
