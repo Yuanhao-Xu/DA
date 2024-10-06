@@ -19,7 +19,7 @@ from alstr_EGAL import EGAL
 from alstr_BayesianAL import BayesianAL
 from alstr_GSx import GSx
 from alstr_GSy import GSy
-from alstr_GSi import GSi
+from alstr_iGS import GSi
 from alstr_GSBAG import GSBAG
 import pyro
 # 设置 Pyro 的随机种子

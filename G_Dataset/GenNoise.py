@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 class DataGenerator:
-    def __init__(self, n_samples=1000, n_features=1, n_lin=0, noise=0.05, seed=50, phase=False):
+    def __init__(self, n_samples=1000, n_features=1, n_lin=0, noise=0.05, seed=50, phase=True):
         """
         初始化 DataGenerator 类，设置样本数、特征数、线性特征数、噪声因子和随机种子。
         phase 参数控制是否添加相位偏移，默认不添加。
@@ -74,17 +74,27 @@ class DataGenerator:
             print("No data generated. Please run generate_data() first.")
 
 
-# 生成7个特征 10%噪声的数据集
-gen = DataGenerator(n_samples=1100, n_features=7, n_lin=0, noise=0.10, seed=50)
+# # 生成7个特征 10%噪声的数据集
+# gen = DataGenerator(n_samples=1100, n_features=7, n_lin=0, noise=0.10, seed=50)
+# gen.generate_data(noise_level=0)
+# gen.save_to_csv('data_1100s_7f10n_NEW.csv')
+#
+# # 生成7个特征 10%噪声的数据集
+# gen = DataGenerator(n_samples=1100, n_features=7, n_lin=0, noise=0.15, seed=50)
+# gen.generate_data(noise_level=1)
+# gen.save_to_csv('data_1100s_7f15n_NEW.csv')
+#
+# # 生成7个特征 10%噪声的数据集
+# gen = DataGenerator(n_samples=1100, n_features=7, n_lin=0, noise=0.20, seed=50)
+# gen.generate_data(noise_level=2)
+# gen.save_to_csv('data_1100s_7f20n_NEW.csv')
+
+# 生成9个特征 5%噪声的数据集
+gen = DataGenerator(n_samples=1100, n_features=9, n_lin=0, noise=0.05, seed=50)
 gen.generate_data(noise_level=0)
-gen.save_to_csv('data_1100s_7f10n_NEW.csv')
+gen.save_to_csv('data_1100s_9f5n_NEW.csv')
 
-# 生成7个特征 10%噪声的数据集
-gen = DataGenerator(n_samples=1100, n_features=7, n_lin=0, noise=0.15, seed=50)
-gen.generate_data(noise_level=1)
-gen.save_to_csv('data_1100s_7f15n_NEW.csv')
-
-# 生成7个特征 10%噪声的数据集
-gen = DataGenerator(n_samples=1100, n_features=7, n_lin=0, noise=0.20, seed=50)
-gen.generate_data(noise_level=2)
-gen.save_to_csv('data_1100s_7f20n_NEW.csv')
+# # 生成11个特征 5%噪声的数据集
+# gen = DataGenerator(n_samples=1100, n_features=11, n_lin=0, noise=0.05, seed=50)
+# gen.generate_data(noise_level=0)
+# gen.save_to_csv('data_1100s_11f5n_NEW.csv')

@@ -97,22 +97,6 @@ class DataProcessor:
 
 
 
-__all__ = [
-    'train_loader',
-    'test_loader',
-    'labeled_indices',
-    'unlabeled_indices',
-    'train_full_dataset',
-    'X_train_labeled_df',
-    'y_train_labeled_df',
-    'X_train_unlabeled_df',
-    'y_train_unlabeled_df',
-    'X_train_full_df',
-    'y_train_full_df',
-    'X_test_df',
-    'y_test_df'
-]
-
 paths = {"UCI_concrete":"Dataset/concrete/concrete_data.csv",
          "BFRC_cs":"Dataset/BFRC/data_cs.csv",
          "BFRC_fs":"Dataset/BFRC/data_fs.csv",
@@ -129,18 +113,37 @@ paths = {"UCI_concrete":"Dataset/concrete/concrete_data.csv",
          "GEN3f5n":"G_Dataset/data_1100s_3f5n.csv",
          "GEN5f5n":"G_Dataset/data_1100s_5f5n.csv",
          "GEN7f5n":"G_Dataset/data_1100s_7f5n.csv",
-         "GEN9f5n":"G_Dataset/data_1100s_9f5n.csv",
-         "GEN11f5n":"G_Dataset/data_1100s_11f5n.csv",
-         "GEN7f20n":"G_Dataset/data_1100s_7f20n_NEW.csv"
+         "GEN7f10n":"G_Dataset/data_1100s_7f10n_NEW.csv",
+         "GEN7f15n":"G_Dataset/data_1100s_7f15n_NEW.csv",
+         "GEN7f20n":"G_Dataset/data_1100s_7f20n_NEW.csv",
+         "GEN9f5n":"G_Dataset/data_1100s_9f5n_NEW.csv",
+         "GEN11f5n":"G_Dataset/data_1100s_11f5n_NEW.csv"
+
 
 
          }
+__all__ = [
+    'train_loader',
+    'test_loader',
+    'labeled_indices',
+    'unlabeled_indices',
+    'train_full_dataset',
+    'X_train_labeled_df',
+    'y_train_labeled_df',
+    'X_train_unlabeled_df',
+    'y_train_unlabeled_df',
+    'X_train_full_df',
+    'y_train_full_df',
+    'X_test_df',
+    'y_test_df'
+]
+
 
 
 
 
 # 实例化 DataProcessor 类
-Dataset_UCI = DataProcessor(file_path=paths["GEN7f20n"], addendum_init=10)
+Dataset_UCI = DataProcessor(file_path=paths["GEN9f5n"], addendum_init=10)
 
 # 获取训练器
 train_loader = Dataset_UCI.train_loader

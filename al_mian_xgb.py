@@ -19,7 +19,7 @@ from alstr_EGAL import EGAL
 from alstr_BayesianAL import BayesianAL
 from alstr_GSx import GSx
 from alstr_GSy import GSy
-from alstr_GSi import GSi
+from alstr_iGS import iGS
 from alstr_GSBAG import GSBAG
 
 # 设置随机种子
@@ -34,8 +34,8 @@ SEED = 50
 set_seed(SEED)
 
 # 定义策略
-# strategies = ["RS"]
-strategies = ["RS", "LL4AL", "LCMD", "MCD", "EGAL", "BayesianAL", "GSx", "GSy", "GSi", "GSBAG"]
+# strategies = ["iGS"]
+strategies = ["RS", "LL4AL", "LCMD", "MCD", "EGAL", "BayesianAL", "GSx", "GSy", "iGS", "GSBAG"]
 addendum_size = 10
 num_cycles = 85
 NN_input = X_train_labeled_df.shape[1]
@@ -54,7 +54,7 @@ al_EGAL = EGAL()
 al_BayesianAL = BayesianAL()
 al_GSx = GSx(random_state=42)
 al_GSy = GSy(random_state=42)
-al_GSi = GSi(random_state=42)
+al_iGS = iGS(random_state=42)
 al_GSBAG = GSBAG(kernel=RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
 
 # 遍历所有策略
@@ -125,7 +125,7 @@ for strategy in strategies:
             selected_indices = al_EGAL.query(current_X_train_labeled_df,
                                              current_X_train_unlabeled_df,
                                              X_train_full_df, addendum_size,
-                                             b_factor=0.1)
+                                             b_factor=0.15)
 
         elif strategy == "BayesianAL":
             selected_indices = al_BayesianAL.query(current_X_train_unlabeled_df, current_X_train_labeled_df,
@@ -141,8 +141,8 @@ for strategy in strategies:
                                             current_y_train_labeled_df,
                                             current_y_train_unlabeled_df)
 
-        elif strategy == "GSi":
-            selected_indices = al_GSi.query(current_X_train_unlabeled_df,
+        elif strategy == "iGS":
+            selected_indices = al_iGS.query(current_X_train_unlabeled_df,
                                             addendum_size,
                                             current_X_train_labeled_df,
                                             current_y_train_labeled_df,
@@ -175,13 +175,13 @@ for strategy in strategies:
 # 打印或保存所有策略的结果
 print(R2s_dict)
 
-# # 保存文件
-# folder_name = 'xgb_res'
-# if not os.path.exists(folder_name):
-#     os.makedirs(folder_name)
-#
-# save_path = os.path.join(folder_name, 'ENB2012_1_10i_10s_60c_50s.json')
-# with open(save_path, 'w') as f:
-#     json.dump(R2s_dict, f)
-#
-# print(f"R2s_dict has been saved to {save_path}")
+# 保存文件
+folder_name = 'xgb_res'
+if not os.path.exists(folder_name):
+    os.makedirs(folder_name)
+
+save_path = os.path.join(folder_name, 'GEN7f10n_10i_10s_85c_50s_20241005.json')
+with open(save_path, 'w') as f:
+    json.dump(R2s_dict, f)
+
+print(f"R2s_dict has been saved to {save_path}")

@@ -35,9 +35,9 @@ class R2Plotter:
             plt.plot(data_volume, r2_scores, label=strategy, linestyle='-', linewidth=2, alpha=0.8)
 
         # 设置标题和坐标轴标签
-        plt.title(f'r2 Scores of Different Strategies on {self.dataset_name} Dataset', fontsize=24)
+        plt.title(f'R^2 Scores of Different Strategies on {self.dataset_name} Dataset', fontsize=24)
         plt.xlabel('Data Volume', fontsize=22)
-        plt.ylabel('r2 Score', fontsize=22)
+        plt.ylabel('R^2 Score', fontsize=22)
 
         # 将图例位置与对比图一致，设置在右下角
         plt.legend(loc='lower right', fontsize=18)
@@ -74,9 +74,9 @@ class R2Plotter:
             plt.plot(data_volume, r2_scores, label=strategy, linestyle='-', linewidth=2, alpha=0.8)
 
             # 设置标题和坐标轴标签
-            plt.title(f'r2 Scores Comparison between {strategy} and RS on {self.dataset_name} Dataset', fontsize=24)
+            plt.title(f'R^2 Scores Comparison between {strategy} and RS on {self.dataset_name} Dataset', fontsize=24)
             plt.xlabel('Data Volume', fontsize=22)
-            plt.ylabel('r2 Score', fontsize=22)
+            plt.ylabel('R^2 Score', fontsize=22)
 
             # 显示图例，放在右下角
             plt.legend(loc='lower right', fontsize=18)
@@ -89,7 +89,7 @@ class R2Plotter:
             plt.tight_layout()
 
             # 保存为 PNG 文件，文件名为策略与RS的对比
-            file_name = f"{strategy}vs_RS_on_{self.dataset_name}.png"
+            file_name = f"{strategy}_vs_RS_on_{self.dataset_name}.png"
             plt.savefig(os.path.join(self.dataset_name, file_name))
             plt.close()  # 关闭当前图形以节省内存
 
