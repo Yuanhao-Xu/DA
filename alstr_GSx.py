@@ -4,7 +4,7 @@ from xgboost import XGBRegressor
 
 
 def distance(sample1, sample2):
-    # 计算样本之间的欧氏距离
+    # Calculate Euclidean distance between samples
     return np.linalg.norm(sample1 - sample2)
 
 
@@ -15,32 +15,32 @@ class GSx(XGBRegressor):
         self.random_state = random_state
 
     def query(self, X_unlabeled, n_act, **kwargs):
-        # 计算df中每个点与其他所有点的距离的和
+        # Compute the sum of distances for each point to all other points
 
         distances = np.zeros(X_unlabeled.shape[0])
         for i in range(X_unlabeled.shape[0]):
             for j in range(X_unlabeled.shape[0]):
                 distances[i] += distance(X_unlabeled.iloc[i].values, X_unlabeled.iloc[j].values)
 
-        # 选择距离和最小的点作为第一个点
+        # Select the point with the smallest sum of distances as the centroid
         centroid = np.argmin(distances)
 
-        # 获得第一个点在df中的标准索引
+        # Get the original index of the first sample in the DataFrame
         first_sample_index = X_unlabeled.index[centroid]
-        # 初始化已选择样本集合
+        # Initialize the set of selected samples
         selected_samples_indices = []
         selected_samples_indices.append(first_sample_index)
-        # 选择与质心最近的样本作为第一个样本
+        # Select the sample closest to the centroid as the first sample
         remaining_samples = X_unlabeled.drop(first_sample_index)
 
-        # 选择后续样本
+        # Select subsequent samples
         while len(selected_samples_indices) < n_act:
             max_distance = -1
             next_sample_index = None
             for idx, sample in remaining_samples.iterrows():
-                # 计算该样本到已选择样本集中每个样本的距离的最小值
+                # Calculate the minimum distance to any sample in the selected set
                 min_distance = min([distance(sample.values, X_unlabeled.loc[i].values) for i in selected_samples_indices])
-                # 找出距离最远的那个样本
+                # Find the sample with the greatest minimum distance
                 if min_distance > max_distance:
                     max_distance = min_distance
                     next_sample_index = idx

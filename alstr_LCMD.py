@@ -4,35 +4,35 @@ from bmdal_reg.bmdal.algorithms import select_batch
 
 class LCMD:
     """
-    用于使用 LCMD 方法选择未标记数据索引的类。
+    Class for selecting unlabeled data indices using LCMD.
     """
 
     def query(self, custom_model, X_train_labeled_df, y_train_labeled_df, X_train_unlabeled_df, y_train_unlabeled_df, addendum_size):
         """
-        使用 LCMD 方法选择未标记数据的索引。
+        Select indices of unlabeled data using LCMD.
 
-        参数:
-        - custom_model: 用于 LCMD 选择的自定义模型。
-        - X_train_labeled_df: 已标记训练数据的特征 DataFrame。
-        - y_train_labeled_df: 已标记训练数据的标签 DataFrame。
-        - X_train_unlabeled_df: 未标记训练数据的特征 DataFrame。
-        - y_train_unlabeled_df: 未标记训练数据的标签 DataFrame。
-        - addendum_size: 本次选择的索引数量。
+        Parameters:
+        - custom_model: Custom model for LCMD selection.
+        - X_train_labeled_df: Labeled training data features.
+        - y_train_labeled_df: Labeled training data labels.
+        - X_train_unlabeled_df: Unlabeled training data features.
+        - y_train_unlabeled_df: Unlabeled training data labels.
+        - addendum_size: Number of indices to select.
 
-        返回:
-        - selected_indices (list): 本次选择的未标记数据的索引列表。
+        Returns:
+        - selected_indices (list): List of selected unlabeled data indices.
         """
-        # 将 DataFrame 转换为 tensor
+        # Convert DataFrame to tensors
         X_train_labeled_tensor = torch.tensor(X_train_labeled_df.values, dtype=torch.float32)
         y_train_labeled_tensor = torch.tensor(y_train_labeled_df.values, dtype=torch.float32)
         X_train_unlabeled_tensor = torch.tensor(X_train_unlabeled_df.values, dtype=torch.float32)
         y_train_unlabeled_tensor = torch.tensor(y_train_unlabeled_df.values, dtype=torch.float32)
 
-        # 构造 TensorFeatureData 对象
+        # Create TensorFeatureData objects
         train_data = TensorFeatureData(X_train_labeled_tensor)
         pool_data = TensorFeatureData(X_train_unlabeled_tensor)
 
-        # 使用 select_batch 选择未标记数据
+        # Select unlabeled data using select_batch
         incertitude_index, _ = select_batch(
             batch_size=addendum_size,
             models=[custom_model],
@@ -44,5 +44,5 @@ class LCMD:
             kernel_transforms=[('rp', [512])]
         )
 
-        # 返回选中的未标记数据集的索引
+        # Return the indices of selected unlabeled data
         return X_train_unlabeled_df.index[incertitude_index].tolist()

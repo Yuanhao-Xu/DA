@@ -6,12 +6,12 @@ import os
 class R2Analyzer:
     def __init__(self, data_dicts, r2_thresholds, total_samples, addendum_init, addendum_size):
         """
-        初始化类
-        :param data_dicts: 不同数据集字典
-        :param r2_thresholds: r2阈值列表
-        :param total_samples: 每个数据集总样本数
-        :param addendum_init: 初始样本数
-        :param addendum_size: 每次循环增加样本数
+        Initialize the class.
+        :param data_dicts: Dictionary of datasets.
+        :param r2_thresholds: List of R2 thresholds.
+        :param total_samples: Total number of samples per dataset.
+        :param addendum_init: Initial number of samples.
+        :param addendum_size: Number of samples added per cycle.
         """
         self.data_dicts = data_dicts
         self.r2_thresholds = r2_thresholds
@@ -21,8 +21,9 @@ class R2Analyzer:
 
     def find_r2_proportions(self):
         """
-        返回以策略命名的字典，每个字典的key是不同数据集，value是两个列表：
-        1. 达到每个r2阈值时的样本比例。
+        Returns a dictionary with strategy names. Each key contains another dictionary
+        where the key is the dataset and the value is two lists:
+        1. Sample proportion for reaching each R2 threshold.
         """
         strategy_dict = {}
         for dataset_name, strategy_data in self.data_dicts.items():
@@ -47,10 +48,10 @@ class R2Analyzer:
 
     def plot_r2_proportions(self, proportions_dict, image_folder):
         """
-        根据返回的proportions字典，绘制每种策略在不同数据集下达到阈值时的数据占比图，并保存图片。
-        所有图像的横坐标范围保持一致 [0, 1]。
-        :param proportions_dict: 各策略在不同数据集下达到阈值时的数据比例字典。
-        :param image_folder: 保存图片的文件夹路径。
+        Plot sample proportions for each strategy and dataset, saving the images.
+        All plots have the same x-axis range [0, 1].
+        :param proportions_dict: Dictionary with sample proportions for each dataset.
+        :param image_folder: Folder to save the images.
         """
         if not os.path.exists(image_folder):
             os.makedirs(image_folder)
@@ -66,38 +67,38 @@ class R2Analyzer:
             plt.legend()
             plt.grid(True)
 
-            # 设置纵坐标只显示阈值，不显示其他刻度
+            # Set y-axis ticks to show only thresholds
             plt.yticks(self.r2_thresholds)
 
-            # 固定横坐标范围为 [0, 1]
+            # Fix x-axis range to [0, 1]
             plt.xlim([0, 1])
 
-            # 保存图片
+            # Save the image
             image_path = os.path.join(image_folder, f'{strategy}_r2_proportions.png')
             plt.savefig(image_path)
             plt.close()
 
     def save_images_and_tables_to_word(self, result, image_folder, word_file_name='dataset_analysis_report.docx'):
         """
-        将指定文件夹中的所有图片和数据比例表格插入到一个Word文档中，并设置字体格式。
-        :param result: 策略命名的字典，每个字典的key是不同数据集，value是两个列表，一个是样本数列表，一个是比例列表。
-        :param image_folder: 存储图片的文件夹路径。
-        :param word_file_name: 生成的Word文档的文件名。
+        Save all images and proportion tables into a Word document with formatting.
+        :param result: Dictionary with strategy names, dataset proportions.
+        :param image_folder: Folder containing the images.
+        :param word_file_name: Name of the generated Word document.
         """
         word_path = os.path.join(image_folder, word_file_name)
         doc = Document()
 
-        # 设置文档标题
+        # Set document title
         doc.add_heading('R2 Proportions Analysis', 0)
 
-        # 插入图片
+        # Insert images
         for strategy in result.keys():
             image_path = os.path.join(image_folder, f'{strategy}_r2_proportions.png')
             if os.path.exists(image_path):
                 doc.add_heading(f'{strategy} Strategy - R2 Proportions', level=1)
                 doc.add_picture(image_path, width=Inches(5.5))
 
-        # 插入表格
+        # Insert tables
         for strategy, dataset_proportions in result.items():
             doc.add_heading(f'{strategy} Strategy - Proportion Table', level=1)
             table = doc.add_table(rows=1, cols=len(self.r2_thresholds) + 1)
@@ -112,5 +113,5 @@ class R2Analyzer:
                 for i, proportion in enumerate(proportions):
                     row_cells[i + 1].text = f'{proportion:.2f}' if proportion is not None else 'N/A'
 
-        # 保存文档
+        # Save document
         doc.save(word_path)

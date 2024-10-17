@@ -7,7 +7,7 @@ data = pd.read_csv(file_path)
 
 cleaned_data = data.dropna()
 
-# 分割特征和标签列
+
 features = cleaned_data.iloc[:, :-2]
 label_1 = cleaned_data.iloc[:, -1]
 label_2 = cleaned_data.iloc[:, -2]

@@ -20,7 +20,6 @@ class EGAL:
         self.beta = alpha
         return alpha
 
-
     def update_beta(self, unlabeled_to_labeled_similarity_matrix, b_factor=0.2, addendum_size=None):
         # Update beta to ensure the candidate set is large enough
         max_similarities = np.max(unlabeled_to_labeled_similarity_matrix, axis=1)
@@ -41,7 +40,6 @@ class EGAL:
 
         # Update class beta to the final value
         self.beta = beta
-        # print(f"b_factor{b_factor}")
         return self.beta
 
     def select_candidates(self, X_train_unlabeled_df, X_train_labeled_df, unlabeled_indices, addendum_size, b_factor):
@@ -53,7 +51,7 @@ class EGAL:
         while len(candidate_indices) < addendum_size:
             self.beta = self.update_beta(unlabeled_to_labeled_similarity_matrix, b_factor, addendum_size)
             candidate_indices = [idx for idx, similarity in zip(unlabeled_indices, max_similarities) if similarity <= self.beta]
-        # print(self.beta)
+
         return candidate_indices
 
     def calculate_density(self, X_train_unlabeled_df, X_train_full_df, candidate_indices, alpha):
@@ -71,14 +69,14 @@ class EGAL:
         Query method for selecting the next set of unlabeled samples.
 
         Parameters:
-        - X_train_labeled_df: DataFrame containing features of the labeled training data.
-        - X_train_unlabeled_df: DataFrame containing features of the unlabeled training data.
-        - X_train_full_df: DataFrame containing features of the full training data.
-        - addendum_size: Number of samples to be selected in this query.
-        - b_factor: Initial proportion factor for controlling the candidate set size.
+        - X_train_labeled_df: Features of labeled training data.
+        - X_train_unlabeled_df: Features of unlabeled training data.
+        - X_train_full_df: Features of full training data.
+        - addendum_size: Number of samples to select.
+        - b_factor: Initial factor to control candidate set size.
 
         Returns:
-        - selected_indices (list): List of indices of the selected unlabeled samples.
+        - selected_indices (list): Indices of the selected unlabeled samples.
         """
         self.unlabeled_indices = X_train_unlabeled_df.index.tolist()
         self.labeled_indices = X_train_labeled_df.index.tolist()

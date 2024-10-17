@@ -1,3 +1,4 @@
+# Import necessary libraries
 import random
 import json
 import os
@@ -8,8 +9,8 @@ from sklearn.metrics import r2_score
 from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 import torch
 
-# 导入自定义的 DataProcessor 模块
-from BenchmarkModel import BenchmarkModel
+# Import custom DataProcessor module
+from LCMD_nn_Model import BenchmarkModel
 from DataProcessor import *
 from alstr_RS import RS
 from alstr_LL4AL import LL4AL
@@ -22,18 +23,18 @@ from alstr_GSy import GSy
 from alstr_iGS import iGS
 from alstr_GSBAG import GSBAG
 
-# 设置随机种子
+# Set random seed
 def set_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # 如果使用多GPU
+    torch.cuda.manual_seed_all(seed)  # For multi-GPU use
     np.random.seed(seed)
     random.seed(seed)
 
 SEED = 50
 set_seed(SEED)
 
-# 定义策略
+# Define strategies
 # strategies = ["iGS"]
 strategies = ["RS", "LL4AL", "LCMD", "MCD", "EGAL", "BayesianAL", "GSx", "GSy", "iGS", "GSBAG"]
 addendum_size = 10
@@ -41,11 +42,10 @@ num_cycles = 85
 NN_input = X_train_labeled_df.shape[1]
 NN_output = y_train_labeled_df.shape[1]
 
-
-# 字典保存每种策略的 test_R2s
+# Dictionary to store R² results for each strategy
 R2s_dict = {}
 
-# 实例化所有策略类
+# Initialize strategy classes
 al_RS = RS()
 al_LL4AL = LL4AL(BATCH=32, LR=0.001, MARGIN=0.7, WEIGHT=1.5, EPOCH=200, EPOCHL=30, WDECAY=5e-4)
 al_LCMD = LCMD()
@@ -57,11 +57,11 @@ al_GSy = GSy(random_state=42)
 al_iGS = iGS(random_state=42)
 al_GSBAG = GSBAG(kernel=RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
 
-# 遍历所有策略
+# Loop through strategies
 for strategy in strategies:
     desc_text = f"[{strategy:^15}] ⇢ Cycles".ljust(10)
 
-    # 初始化数据
+    # Initialize data
     set_seed(SEED)
     current_labeled_indices = labeled_indices.copy()
     current_unlabeled_indices = unlabeled_indices.copy()
@@ -72,28 +72,28 @@ for strategy in strategies:
 
     test_R2s = []
 
-    # 遍历主动学习的 cycle
+    # Loop through active learning cycles
     for cycle in tqdm(range(num_cycles), desc=f"{desc_text} ", ncols=80):
 
-        # XGBoost 模型初始化，选择合适的参数
+        # XGBoost model initialization
         model = xgb.XGBRegressor(
-            n_estimators=1500,  # 迭代次数
-            learning_rate=0.01,  # 学习率
-            max_depth=6,  # 树的最大深度
-            subsample=0.8,  # 子样本比例
-            colsample_bytree=0.8,  # 每棵树使用特征的比例
+            n_estimators=1500,  # Number of iterations
+            learning_rate=0.01,  # Learning rate
+            max_depth=6,  # Max tree depth
+            subsample=0.8,  # Subsample ratio
+            colsample_bytree=0.8,  # Feature ratio per tree
             random_state=SEED
         )
 
-        # 训练模型
+        # Train the model
         model.fit(current_X_train_labeled_df, current_y_train_labeled_df)
 
-        # 测试模型
+        # Test the model
         y_pred = model.predict(X_test_df)
         test_R2 = round(r2_score(y_test_df, y_pred), 4)
         test_R2s.append(test_R2)
 
-        # 根据策略选择数据
+        # Select data based on strategy
         if strategy == "RS":
             selected_indices = al_RS.query(current_unlabeled_indices, addendum_size)
 
@@ -155,33 +155,33 @@ for strategy in strategies:
                                               addendum_size)
 
         else:
-            print("An undefined strategy was encountered.")  # 提示未定义的策略
+            print("An undefined strategy was encountered.")  # Undefined strategy warning
             selected_indices = []
 
-        # 更新索引
+        # Update indices
         current_labeled_indices.extend(selected_indices)
         for idx in selected_indices:
             current_unlabeled_indices.remove(idx)
 
-        # 更新已标注和未标注数据集
+        # Update labeled and unlabeled datasets
         current_X_train_labeled_df = X_train_full_df.loc[current_labeled_indices]
         current_y_train_labeled_df = y_train_full_df.loc[current_labeled_indices]
         current_X_train_unlabeled_df = X_train_full_df.loc[current_unlabeled_indices]
         current_y_train_unlabeled_df = y_train_full_df.loc[current_unlabeled_indices]
 
-    # 将每种策略的结果存入字典
+    # Save R² results for each strategy
     R2s_dict[strategy] = test_R2s
 
-# 打印或保存所有策略的结果
+# Print or save all strategy results
 print(R2s_dict)
 
-# 保存文件
-folder_name = 'xgb_res'
-if not os.path.exists(folder_name):
-    os.makedirs(folder_name)
-
-save_path = os.path.join(folder_name, 'GEN7f10n_10i_10s_85c_50s_20241005.json')
-with open(save_path, 'w') as f:
-    json.dump(R2s_dict, f)
-
-print(f"R2s_dict has been saved to {save_path}")
+# Save file
+# folder_name = 'xgb_res'
+# if not os.path.exists(folder_name):
+#     os.makedirs(folder_name)
+#
+# save_path = os.path.join(folder_name, 'GEN9f10n_10i_10s_85c_50s_20241015.json')
+# with open(save_path, 'w') as f:
+#     json.dump(R2s_dict, f)
+#
+# print(f"R2s_dict has been saved to {save_path}")

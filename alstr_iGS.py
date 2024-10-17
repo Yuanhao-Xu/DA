@@ -4,7 +4,7 @@ from xgboost import XGBRegressor
 
 
 def distance(sample1, sample2):
-    # 计算样本之间的欧氏距离
+    # Calculate Euclidean distance between samples
     return np.linalg.norm(sample1 - sample2)
 
 
@@ -26,10 +26,10 @@ class iGS(XGBRegressor):
             next_sample_index = None
 
             for idx, sample in y_predict.iterrows():
-                # 计算该样本到已选择样本集中每个样本的距离的最小值
+                # Calculate the minimum distance to any sample in the selected set
                 min_distance = min([distance(sample.values, y_labeled.loc[i].values) * distance(
                     X_unlabeled.loc[idx].values, X_labeled.loc[i].values) for i in y_labeled.index])
-                # 找出距离最远的那个样本
+                # Find the sample with the greatest minimum distance
                 if min_distance > max_distance:
                     max_distance = min_distance
                     next_sample_index = idx
@@ -40,4 +40,3 @@ class iGS(XGBRegressor):
             y_unlabeled = y_unlabeled.drop(next_sample_index)
 
         return selected_indices
-

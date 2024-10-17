@@ -22,7 +22,7 @@ class MC_Dropout(nn.Module):
         return x
 
     def MCD_pred(self, x_data, n_samples=50):
-        self.train()  # 启用 dropout 进行 MC Dropout 预测
+        self.train()  # Enable dropout for MC Dropout prediction
         predictions = []
         for _ in range(n_samples):
             with torch.no_grad():
@@ -46,41 +46,41 @@ class MC_Dropout(nn.Module):
     def query(self, X_train_labeled_df, y_train_labeled_df, X_train_unlabeled_df, y_train_unlabeled_df, addendum_size,
               n_samples=50, epochs=500, lr=0.01):
         """
-        使用 MC Dropout 进行不确定性查询。
+        Use MC Dropout for uncertainty query.
 
-        参数:
-        - X_train_labeled_df: 已标记训练数据的特征 DataFrame。
-        - y_train_labeled_df: 已标记训练数据的标签 DataFrame。
-        - X_train_unlabeled_df: 未标记训练数据的特征 DataFrame。
-        - y_train_unlabeled_df: 未标记训练数据的标签 DataFrame。
-        - addendum_size: 本次选择的索引数量。
-        - n_samples: 进行 MC Dropout 预测时的采样次数。
-        - epochs: 模型训练的轮数。
-        - lr: 学习率。
+        Parameters:
+        - X_train_labeled_df: Features of labeled training data.
+        - y_train_labeled_df: Labels of labeled training data.
+        - X_train_unlabeled_df: Features of unlabeled training data.
+        - y_train_unlabeled_df: Labels of unlabeled training data.
+        - addendum_size: Number of indices to select.
+        - n_samples: Number of MC Dropout samples.
+        - epochs: Number of training epochs.
+        - lr: Learning rate.
 
-        返回:
-        - selected_indices (list): 本次选择的未标记数据的索引列表。
+        Returns:
+        - selected_indices (list): List of selected unlabeled data indices.
         """
-        # 自动确定输入维度和输出维度
+        # Automatically determine input and output dimensions
         input_dim = X_train_labeled_df.shape[1]
         output_dim = 1 if len(y_train_labeled_df.shape) == 1 else y_train_labeled_df.shape[1]
 
-        # 检查模型的输入维度和输出维度是否匹配
+        # Check if model dimensions match
         if self.fc1.in_features != input_dim or self.fc3.out_features != output_dim:
-            raise ValueError(f"模型输入维度应为 {self.fc1.in_features}，输出维度应为 {self.fc3.out_features}")
+            raise ValueError(f"Model input dimension should be {self.fc1.in_features}, output dimension should be {self.fc3.out_features}")
 
-        # 将 DataFrame 转换为张量
+        # Convert DataFrame to tensors
         X_train_labeled_tensor = torch.tensor(X_train_labeled_df.values, dtype=torch.float32)
         y_train_labeled_tensor = torch.tensor(y_train_labeled_df.values, dtype=torch.float32)
         X_train_unlabeled_tensor = torch.tensor(X_train_unlabeled_df.values, dtype=torch.float32)
 
-        # 训练模型
+        # Train the model
         self.train_model(X_train_labeled_tensor, y_train_labeled_tensor, epochs=epochs, lr=lr)
 
-        # 使用 MC Dropout 进行预测
+        # MC Dropout prediction
         _, prediction_std = self.MCD_pred(X_train_unlabeled_tensor, n_samples=n_samples)
 
-        # 对不确定性进行排序，选择不确定性最大的 addendum_size 个数据点
+        # Sort by uncertainty and select top addendum_size samples
         uncertainty = prediction_std.flatten()
         incertitude_index = np.argsort(-uncertainty)[:addendum_size]
 

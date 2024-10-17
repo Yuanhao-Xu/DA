@@ -11,11 +11,11 @@ class GSBAG(GaussianProcessRegressor):
 
     def query(self, X_unlabeled, X_labeled, n_act=1, **kwargs):
         if X_labeled is None:
-            raise ValueError("You have to fit it at least once first")
-        # 声明一个空的dataframe，用于存储X_unlabeled中分割出来的数据点
+            raise ValueError("You must fit the model at least once first")
+        # Create an empty DataFrame to store selected data points from X_unlabeled
         selected_X = pd.DataFrame(columns=X_unlabeled.columns)
         selected_indices = []
-        # Here we handle the combination of X correctly
+        # Handle the combination of X correctly
         sigma2_epsilon = self.kernel_.k2.noise_level
         for i in range(n_act):
             combined_X = pd.concat([X_labeled, selected_X])
